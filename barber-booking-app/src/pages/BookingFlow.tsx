@@ -1,5 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+
+interface Service {
+  id: string;
+  name: string;
+  price: number;
+  duration_minutes: number;
+}
 
 export default function BookingFlow() {
   const { shop_slug } = useParams();
@@ -8,13 +16,43 @@ export default function BookingFlow() {
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [selectedBarber, setSelectedBarber] = useState<string | null>(null);
-
-  // Date selection state
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  // Database State
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadShopServices() {
+      if (!shop_slug) return;
+
+      // 1. Find the shop ID based on the URL slug
+      const { data: shopData } = await supabase
+        .from("shops")
+        .select("id")
+        .eq("slug", shop_slug)
+        .single();
+
+      if (shopData) {
+        // 2. Fetch only the services belonging to this specific shop
+        const { data: servicesData } = await supabase
+          .from("services")
+          .select("*")
+          .eq("shop_id", shopData.id);
+
+        if (servicesData) {
+          setServices(servicesData);
+        }
+      }
+      setLoading(false);
+    }
+
+    loadShopServices();
+  }, [shop_slug]);
 
   // Format shop name from URL
   const formatShopName = (slug: string | undefined) => {
-    if (slug === "paanis-hair-studio") return "Paani's Hair Studio";
+    if (slug === "panis-hair-studio") return "Pani's Hair Studio";
     if (!slug) return "Barbershop";
     return slug
       .split("-")
@@ -29,25 +67,15 @@ export default function BookingFlow() {
     address:
       "Shop No. 6, Marigold Aangan, Sevaram Lalwani Rd, Mulund West, Mumbai",
     hours: "Tue-Sun: 9:30 AM - 10:00 PM",
-    // Uses the exact Google Maps Place ID for precise routing
     mapsUrl:
       "https://www.google.com/maps/dir/?api=1&destination=Paani's+Hair+Studio&destination_place_id=ChIJFd5tSwC55zsRibZxgeJZSP0",
   };
-
-  // Keep our exact services and barbers
-  const services = [
-    { id: 1, name: "Skin Fade", price: "£20", duration: "45 min" },
-    { id: 2, name: "Classic Scissor Cut", price: "£18", duration: "45 min" },
-    { id: 3, name: "Beard Trim & Shape", price: "£12", duration: "30 min" },
-    { id: 4, name: "The Full Works", price: "£30", duration: "60 min" },
-  ];
 
   const barbers = [
     { id: 1, name: "Kaana", image: "🧔🏻‍♂️" },
     { id: 2, name: "Anil", image: "🧔🏽‍♂️" },
   ];
 
-  // Time slots adjusted to match the real 9:30 AM opening time
   const timeSlots = [
     "09:30 AM",
     "10:15 AM",
@@ -68,7 +96,6 @@ export default function BookingFlow() {
     "09:15 PM",
   ];
 
-  // Helper to generate the next 14 days for the UI
   const generateDates = () => {
     const dates = [];
     const today = new Date();
@@ -97,32 +124,21 @@ export default function BookingFlow() {
           {displayShopName}
         </h1>
 
-        {/* Real Shop Details & Google Maps Directions */}
         <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 text-sm text-neutral-400 mb-8">
-          {/* Address Block */}
           <div className="flex items-center gap-3 max-w-sm text-center md:text-left">
             <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-white/5 border border-white/10">
               📍
             </span>
             <span className="leading-snug">{shopInfo.address}</span>
           </div>
-
-          {/* Aesthetic Desktop Divider */}
           <div className="hidden md:block w-px h-10 bg-white/10"></div>
-
-          {/* Hours Block */}
           <div className="flex items-center gap-3">
             <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-white/5 border border-white/10">
               🕒
             </span>
-            {/* Added whitespace-nowrap here to prevent PM from dropping down */}
             <span className="whitespace-nowrap">{shopInfo.hours}</span>
           </div>
-
-          {/* Aesthetic Desktop Divider */}
           <div className="hidden md:block w-px h-10 bg-white/10"></div>
-
-          {/* Upgraded Action Button */}
           <a
             href={shopInfo.mapsUrl}
             target="_blank"
@@ -157,28 +173,37 @@ export default function BookingFlow() {
       {step === 1 && (
         <div className="animate-in fade-in duration-500">
           <h2 className="text-xl font-semibold mb-6">1. Select a Service</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {services.map((service) => (
-              <div
-                key={service.id}
-                onClick={() => {
-                  setSelectedService(service.name);
-                  setStep(2);
-                }}
-                className="p-6 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-neutral-500 transition-all cursor-pointer flex justify-between items-center group"
-              >
-                <div>
-                  <h3 className="text-lg font-medium text-neutral-200 group-hover:text-white">
-                    {service.name}
-                  </h3>
-                  <p className="text-sm text-neutral-400">{service.duration}</p>
+
+          {loading ? (
+            <div className="text-center text-neutral-500 py-10 animate-pulse">
+              Loading services...
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {services.map((service) => (
+                <div
+                  key={service.id}
+                  onClick={() => {
+                    setSelectedService(service.name);
+                    setStep(2);
+                  }}
+                  className="p-6 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-neutral-500 transition-all cursor-pointer flex justify-between items-center group"
+                >
+                  <div>
+                    <h3 className="text-lg font-medium text-neutral-200 group-hover:text-white">
+                      {service.name}
+                    </h3>
+                    <p className="text-sm text-neutral-400">
+                      {service.duration_minutes} min
+                    </p>
+                  </div>
+                  <span className="text-lg font-semibold text-white">
+                    ₹{service.price}
+                  </span>
                 </div>
-                <span className="text-lg font-semibold text-white">
-                  {service.price}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -267,7 +292,6 @@ export default function BookingFlow() {
                 );
               })}
             </div>
-
             <div className="mt-6 flex justify-end">
               <button
                 onClick={() => setStep(4)}
