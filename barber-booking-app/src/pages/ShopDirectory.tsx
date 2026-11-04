@@ -29,41 +29,45 @@ export default function ShopDirectory() {
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-12 text-white">
-      <div className="mb-12 text-center">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-3">
-          Select a Barbershop
-        </h1>
-        <p className="text-neutral-400">
-          Choose a location to book your appointment.
-        </p>
-      </div>
+    <div className="py-12">
+      <div className="max-w-4xl mx-auto px-6">
+        <div className="mb-12 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-3 text-navy-blue drop-shadow-sm">
+            Select a Barbershop
+          </h1>
+          <p className="text-navy-blue/70">
+            Choose a location to book your appointment.
+          </p>
+        </div>
 
-      {loading ? (
-        <div className="text-center text-neutral-500 animate-pulse">
-          Loading shops...
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {shops.map((shop) => (
-            <Link
-              key={shop.id}
-              to={`/${shop.slug}`}
-              className="p-6 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-neutral-500 transition-all cursor-pointer flex items-center gap-4 group"
-            >
-              <div className="text-4xl bg-black p-4 rounded-xl border border-white/10 group-hover:border-white/30 transition-all">
-                ✂️
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-neutral-200 group-hover:text-white transition-colors">
-                  {shop.name}
-                </h3>
-                <p className="text-sm text-neutral-400">{shop.address}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+        {loading ? (
+          <div className="text-center text-navy-blue/60 py-10 animate-pulse">
+            Loading shops...
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {shops.map((shop) => (
+              <Link
+                key={shop.id}
+                to={`/${shop.slug}`}
+                className="p-6 rounded-2xl backdrop-blur-md bg-navy-blue/5 border border-navy-blue/10 hover:border-crimson-pink hover:shadow-neon-glow transition-all cursor-pointer flex items-center gap-5 group"
+              >
+                <div className="text-4xl bg-navy-blue/10 p-4 rounded-xl border border-navy-blue/10 group-hover:border-crimson-pink/50 transition-all">
+                  ✂️
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-navy-blue transition-colors">
+                    {shop.name}
+                  </h3>
+                  <p className="text-sm text-navy-blue/70 mt-1">
+                    {shop.address}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
