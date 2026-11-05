@@ -7,24 +7,16 @@ export default {
         sans: ["Outfit", "sans-serif"],
       },
       colors: {
-        "icy-blue": "#F2F7FB",
-        "deep-navy": "#0A1930",
-        "muted-blue": "#4A6277",
-        "soft-pink": "#FF7B93",
-        "vibrant-pink": "#FF5A7A",
-        lavender: "#B588D6",
+        "saffron-cherry": "#6F0317",
+        "rose-red": "#E52150",
+        "sunshine-yellow": "#F4EB06",
+        "warm-ivory": "#FAF8F5",
+        cream: "#F6F2EB",
       },
       boxShadow: {
-        "pink-glow": "0 8px 32px -8px rgba(255, 90, 122, 0.5)",
-        "glass-panel": "0 8px 32px 0 rgba(10, 25, 48, 0.05)",
-      },
-      animation: {
-        "border-spin": "border-spin 4s linear infinite",
-      },
-      keyframes: {
-        "border-spin": {
-          "100%": { transform: "rotate(-360deg)" },
-        },
+        "rose-glow": "0 8px 32px -8px rgba(229, 33, 80, 0.4)",
+        "yellow-glow": "0 8px 32px -8px rgba(244, 235, 6, 0.3)",
+        "glass-panel": "0 8px 32px 0 rgba(111, 3, 23, 0.08)",
       },
     },
   },
