@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { BarberCard } from "../components/ui/BarberCard";
 
@@ -14,13 +14,11 @@ export default function BookingFlow() {
   const { shop_slug } = useParams();
   const navigate = useNavigate();
 
-  // State to track booking progress
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [selectedBarber, setSelectedBarber] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
-  // Database State
   const [shopId, setShopId] = useState<string | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,12 +51,10 @@ export default function BookingFlow() {
     loadShopServices();
   }, [shop_slug]);
 
-  // Final Database Insert Function
   const handleBookAppointment = async (time: string) => {
     if (!shopId || !selectedService || !selectedBarber || !selectedDate) return;
 
     setIsBooking(true);
-
     try {
       const { error } = await supabase.from("bookings").insert([
         {
@@ -74,7 +70,7 @@ export default function BookingFlow() {
       if (error) throw error;
 
       alert(`Success! Your appointment with ${selectedBarber} is confirmed.`);
-      navigate("/"); // Send them back to home after booking
+      navigate("/");
     } catch (err: any) {
       console.error("Booking error:", err.message);
       alert("Failed to complete booking. Please try again.");
@@ -148,54 +144,62 @@ export default function BookingFlow() {
   };
 
   return (
-    <div className="pt-12 pb-24">
+    <div className="pt-12 pb-24 text-navy-blue">
       <div className="max-w-4xl mx-auto px-6">
         {/* Shop Info Header */}
         <div className="mb-12 text-center">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4 capitalize text-navy-blue drop-shadow-sm">
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 capitalize drop-shadow-sm text-navy-blue">
             {displayShopName}
           </h1>
 
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 text-sm text-navy-blue/80 mb-8">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 text-sm text-navy-blue/80 mb-8 font-semibold">
             <div className="flex items-center gap-3 max-w-sm text-center md:text-left">
               <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-navy-blue/10 border border-navy-blue/20">
                 📍
               </span>
               <span className="leading-snug">{shopInfo.address}</span>
             </div>
-            <div className="hidden md:block w-px h-10 bg-navy-blue/20"></div>
+            <div className="hidden md:block w-px h-10 bg-navy-blue/25"></div>
             <div className="flex items-center gap-3">
               <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-navy-blue/10 border border-navy-blue/20">
                 🕒
               </span>
               <span className="whitespace-nowrap">{shopInfo.hours}</span>
             </div>
-            <div className="hidden md:block w-px h-10 bg-navy-blue/20"></div>
+            <div className="hidden md:block w-px h-10 bg-navy-blue/25"></div>
             <a
               href={shopInfo.mapsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 md:mt-0 px-5 py-2 rounded-full bg-navy-blue text-white hover:bg-crimson-pink hover:shadow-neon-glow border border-transparent transition-all font-semibold whitespace-nowrap"
+              className="mt-2 md:mt-0 px-6 py-2.5 rounded-full bg-[#FD5988] hover:bg-[#FD5988]/90 text-white shadow-md hover:shadow-lg transition-all font-bold whitespace-nowrap"
             >
               Get Directions
             </a>
           </div>
 
           {/* Breadcrumbs */}
-          <div className="flex items-center justify-center gap-2 text-sm font-medium text-navy-blue/40">
-            <span className={step >= 1 ? "text-crimson-pink font-bold" : ""}>
+          <div className="flex items-center justify-center gap-3 text-sm font-bold text-navy-blue/40">
+            <span
+              className={step >= 1 ? "text-crimson-pink font-extrabold" : ""}
+            >
               Service
             </span>
             <span>→</span>
-            <span className={step >= 2 ? "text-crimson-pink font-bold" : ""}>
+            <span
+              className={step >= 2 ? "text-crimson-pink font-extrabold" : ""}
+            >
               Barber
             </span>
             <span>→</span>
-            <span className={step >= 3 ? "text-crimson-pink font-bold" : ""}>
+            <span
+              className={step >= 3 ? "text-crimson-pink font-extrabold" : ""}
+            >
               Date
             </span>
             <span>→</span>
-            <span className={step >= 4 ? "text-crimson-pink font-bold" : ""}>
+            <span
+              className={step >= 4 ? "text-crimson-pink font-extrabold" : ""}
+            >
               Time
             </span>
           </div>
@@ -204,16 +208,17 @@ export default function BookingFlow() {
         {/* STEP 1: Select Service */}
         {step === 1 && (
           <div className="animate-in fade-in duration-500">
-            <h2 className="text-xl font-semibold mb-6 text-navy-blue">
+            <h2 className="text-xl font-extrabold mb-6 text-navy-blue">
               1. Select a Service
             </h2>
 
             {loading ? (
-              <div className="text-center text-navy-blue/60 py-10 animate-pulse">
+              <div className="text-center text-navy-blue/65 py-10 animate-pulse font-bold">
                 Loading services...
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* RESTORED: Services mapping block */}
                 {services.map((service) => (
                   <div
                     key={service.id}
@@ -221,17 +226,17 @@ export default function BookingFlow() {
                       setSelectedService(service.name);
                       setStep(2);
                     }}
-                    className="p-6 rounded-2xl backdrop-blur-md bg-navy-blue/5 border border-navy-blue/10 hover:border-crimson-pink hover:shadow-neon-glow hover:bg-white/50 transition-all cursor-pointer flex justify-between items-center group"
+                    className="p-6 rounded-2xl backdrop-blur-xl bg-white/20 border border-white/40 hover:border-crimson-pink hover:bg-white/45 hover:shadow-lg transition-all cursor-pointer flex justify-between items-center group shadow-sm"
                   >
                     <div>
-                      <h3 className="text-lg font-bold text-navy-blue">
+                      <h3 className="text-lg font-bold text-navy-blue group-hover:text-crimson-pink transition-colors">
                         {service.name}
                       </h3>
-                      <p className="text-sm text-navy-blue/60 mt-1 font-medium">
+                      <p className="text-sm text-navy-blue/70 mt-1 font-semibold">
                         {service.duration_minutes} min
                       </p>
                     </div>
-                    <span className="text-lg font-bold text-crimson-pink">
+                    <span className="text-xl font-extrabold text-[#FD5988]">
                       ₹{service.price}
                     </span>
                   </div>
@@ -245,18 +250,18 @@ export default function BookingFlow() {
         {step === 2 && (
           <div className="animate-in fade-in duration-500">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-navy-blue">
+              <h2 className="text-xl font-extrabold text-navy-blue">
                 2. Choose your Barber
               </h2>
               <button
                 onClick={() => setStep(1)}
-                className="text-sm font-medium text-navy-blue/60 hover:text-crimson-pink transition-colors"
+                className="text-sm font-bold text-navy-blue/70 hover:text-crimson-pink transition-colors"
               >
                 ← Back to Services
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-5 mt-8">
+            <div className="grid grid-cols-2 gap-6 mt-8">
               {barbers.map((barber) => (
                 <BarberCard
                   key={barber.id}
@@ -277,18 +282,18 @@ export default function BookingFlow() {
         {step === 3 && (
           <div className="animate-in fade-in duration-500">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-navy-blue">
+              <h2 className="text-xl font-extrabold text-navy-blue">
                 3. Select a Date
               </h2>
               <button
                 onClick={() => setStep(2)}
-                className="text-sm font-medium text-navy-blue/60 hover:text-crimson-pink transition-colors"
+                className="text-sm font-bold text-navy-blue/70 hover:text-crimson-pink transition-colors"
               >
                 ← Back to Barbers
               </button>
             </div>
 
-            <div className="bg-navy-blue/5 border border-navy-blue/10 rounded-2xl p-6 md:p-8">
+            <div className="backdrop-blur-xl bg-white/20 border border-white/40 rounded-2xl p-6 md:p-8 shadow-sm">
               <div className="flex gap-4 overflow-x-auto pb-6 snap-x hide-scrollbar">
                 {availableDates.map((date, index) => {
                   const isSelected =
@@ -301,13 +306,13 @@ export default function BookingFlow() {
                       className={`min-w-[110px] p-5 rounded-xl border snap-start transition-all flex flex-col items-center gap-2
                         ${
                           isSelected
-                            ? "bg-crimson-pink border-crimson-pink shadow-neon-glow text-white"
-                            : "bg-white/50 border-navy-blue/10 hover:border-crimson-pink/50 text-navy-blue"
+                            ? "bg-crimson-pink border-crimson-pink shadow-md text-white font-extrabold"
+                            : "bg-white/45 border-white/40 hover:border-crimson-pink/50 text-navy-blue font-bold"
                         }`}
                     >
                       <span
-                        className={`text-xs font-bold uppercase tracking-wider ${
-                          isSelected ? "text-white" : "text-navy-blue/60"
+                        className={`text-xs font-extrabold uppercase tracking-wider ${
+                          isSelected ? "text-white" : "text-navy-blue/70"
                         }`}
                       >
                         {isToday
@@ -316,12 +321,12 @@ export default function BookingFlow() {
                               weekday: "short",
                             })}
                       </span>
-                      <span className="text-2xl font-bold">
+                      <span className="text-2xl font-black">
                         {date.getDate()}
                       </span>
                       <span
-                        className={`text-xs font-medium ${
-                          isSelected ? "text-white/80" : "text-navy-blue/60"
+                        className={`text-xs font-bold ${
+                          isSelected ? "text-white/95" : "text-navy-blue/75"
                         }`}
                       >
                         {date.toLocaleDateString("en-US", { month: "short" })}
@@ -330,10 +335,10 @@ export default function BookingFlow() {
                   );
                 })}
               </div>
-              <div className="mt-4 flex justify-end">
+              <div className="mt-6 flex justify-end">
                 <button
                   onClick={() => setStep(4)}
-                  className="px-8 py-3 rounded-full bg-navy-blue text-white hover:bg-crimson-pink font-semibold hover:shadow-neon-glow hover:scale-105 transition-all"
+                  className="px-8 py-3 rounded-full bg-[#FD5988] text-white hover:bg-[#FD5988]/90 hover:shadow-md font-bold transition-all"
                 >
                   Continue to Time
                 </button>
@@ -346,29 +351,29 @@ export default function BookingFlow() {
         {step === 4 && (
           <div className="animate-in fade-in duration-500">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-navy-blue">
+              <h2 className="text-xl font-extrabold text-navy-blue">
                 4. Select a Time
               </h2>
               <button
                 onClick={() => setStep(3)}
-                className="text-sm font-medium text-navy-blue/60 hover:text-crimson-pink transition-colors"
+                className="text-sm font-bold text-navy-blue/70 hover:text-crimson-pink transition-colors"
               >
                 ← Back to Date
               </button>
             </div>
 
-            <div className="bg-navy-blue/5 border border-navy-blue/10 rounded-2xl p-6 md:p-8">
-              <p className="mb-8 text-navy-blue/80 text-center md:text-left font-medium">
+            <div className="backdrop-blur-xl bg-white/20 border border-white/40 rounded-2xl p-6 md:p-8 shadow-sm">
+              <p className="mb-8 text-navy-blue text-center md:text-left font-bold text-lg">
                 Booking{" "}
-                <span className="font-bold text-crimson-pink">
+                <span className="font-extrabold text-[#FD5988]">
                   {selectedService}
                 </span>{" "}
                 with{" "}
-                <span className="font-bold text-navy-blue">
+                <span className="font-extrabold text-navy-blue">
                   {selectedBarber}
                 </span>{" "}
                 on{" "}
-                <span className="font-bold text-navy-blue">
+                <span className="font-extrabold text-navy-blue">
                   {formatDateLabel(selectedDate)}
                 </span>
               </p>
@@ -379,7 +384,7 @@ export default function BookingFlow() {
                     key={index}
                     disabled={isBooking}
                     onClick={() => handleBookAppointment(time)}
-                    className="py-3 md:py-4 rounded-xl border border-navy-blue/10 bg-white/60 hover:bg-crimson-pink hover:border-crimson-pink hover:shadow-neon-glow hover:text-white transition-all text-sm font-bold text-navy-blue disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="py-3.5 md:py-4 rounded-xl border border-white/40 bg-white/40 hover:bg-crimson-pink hover:border-[#FD5988] hover:text-white transition-all text-sm font-extrabold text-navy-blue shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isBooking ? "..." : time}
                   </button>
