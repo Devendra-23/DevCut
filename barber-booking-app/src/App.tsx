@@ -5,6 +5,7 @@ import Home from "./pages/Home";
 import BookingFlow from "./pages/BookingFlow";
 import ShopDirectory from "./pages/ShopDirectory";
 import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard"; // New import
 
 export default function App() {
   return (
@@ -15,6 +16,8 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/shops" element={<ShopDirectory />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/dashboard" element={<Dashboard />} />{" "}
+            {/* New route */}
             <Route path="/:shop_slug" element={<BookingFlow />} />
           </Route>
         </Routes>

@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 export default function Auth() {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -25,7 +27,13 @@ export default function Auth() {
           password,
         });
         if (error) throw error;
+
         setMessage({ text: "Logged in successfully!", type: "success" });
+
+        // Redirect to the home page after a brief delay
+        setTimeout(() => {
+          navigate("/");
+        }, 500);
       } else {
         const { error } = await supabase.auth.signUp({
           email,
@@ -33,6 +41,7 @@ export default function Auth() {
           options: { data: { full_name: fullName, phone: phone } },
         });
         if (error) throw error;
+
         setMessage({
           text: "Registration successful! You can now log in.",
           type: "success",
@@ -45,10 +54,13 @@ export default function Auth() {
     }
   };
 
+  const inputClasses =
+    "w-full p-4 rounded-xl backdrop-blur-sm bg-white/50 border border-white/80 text-saffron-cherry placeholder:text-saffron-cherry/50 focus:border-rose-red focus:bg-white/80 focus:ring-1 focus:ring-rose-red/30 outline-none transition-all shadow-sm font-medium";
+
   return (
-    <div className="min-h-screen flex items-center justify-center px-6">
-      <div className="w-full max-w-md p-8 rounded-2xl bg-white/5 border border-white/10">
-        <h2 className="text-2xl font-bold mb-6 text-center text-white">
+    <div className="min-h-[calc(100vh-100px)] flex items-center justify-center px-6 py-12 text-saffron-cherry">
+      <div className="w-full max-w-md p-8 rounded-2xl backdrop-blur-xl bg-white/60 border border-white/80 shadow-glass-panel">
+        <h2 className="text-3xl font-extrabold mb-8 text-center text-saffron-cherry tracking-tight">
           {isLogin ? "Welcome Back" : "Create Account"}
         </h2>
 
@@ -60,7 +72,7 @@ export default function Auth() {
                 placeholder="Full Name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="p-3 rounded-xl bg-black border border-white/10 text-white focus:border-white/30 outline-none"
+                className={inputClasses}
                 required
               />
               <input
@@ -68,7 +80,7 @@ export default function Auth() {
                 placeholder="Phone Number"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="p-3 rounded-xl bg-black border border-white/10 text-white focus:border-white/30 outline-none"
+                className={inputClasses}
                 required
               />
             </>
@@ -78,7 +90,7 @@ export default function Auth() {
             placeholder="Email Address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="p-3 rounded-xl bg-black border border-white/10 text-white focus:border-white/30 outline-none"
+            className={inputClasses}
             required
           />
           <input
@@ -86,14 +98,14 @@ export default function Auth() {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="p-3 rounded-xl bg-black border border-white/10 text-white focus:border-white/30 outline-none"
+            className={inputClasses}
             required
           />
 
           {message && (
             <p
-              className={`text-sm ${
-                message.type === "error" ? "text-red-400" : "text-green-400"
+              className={`text-sm font-bold text-center mt-2 ${
+                message.type === "error" ? "text-rose-red" : "text-green-600"
               }`}
             >
               {message.text}
@@ -103,15 +115,18 @@ export default function Auth() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 p-3 rounded-xl bg-white text-black font-semibold hover:bg-neutral-200 transition-colors disabled:opacity-50"
+            className="mt-4 w-full p-4 rounded-xl bg-rose-red text-white font-bold tracking-wide hover:bg-[#C91A44] hover:shadow-rose-glow transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
           >
             {loading ? "Processing..." : isLogin ? "Sign In" : "Register"}
           </button>
         </form>
 
         <button
-          onClick={() => setIsLogin(!isLogin)}
-          className="mt-6 w-full text-sm text-neutral-400 hover:text-white transition-colors"
+          onClick={() => {
+            setIsLogin(!isLogin);
+            setMessage(null);
+          }}
+          className="mt-6 w-full text-sm font-semibold text-saffron-cherry/70 hover:text-rose-red transition-colors"
         >
           {isLogin
             ? "Don't have an account? Sign up"

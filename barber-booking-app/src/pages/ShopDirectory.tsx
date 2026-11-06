@@ -29,19 +29,19 @@ export default function ShopDirectory() {
   }, []);
 
   return (
-    <div className="py-16">
+    <div className="py-16 text-saffron-cherry">
       <div className="max-w-4xl mx-auto px-6">
         <div className="mb-12 text-center">
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tight mb-3 text-navy-blue drop-shadow-sm">
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3 text-saffron-cherry drop-shadow-sm">
             Select a Barbershop
           </h1>
-          <p className="text-navy-blue/70 text-lg font-medium">
+          <p className="text-saffron-cherry/80 text-lg font-semibold">
             Choose a location to book your appointment.
           </p>
         </div>
 
         {loading ? (
-          <div className="text-center text-navy-blue/60 py-10 animate-pulse font-medium">
+          <div className="text-center text-saffron-cherry/60 py-10 animate-pulse font-bold">
             Loading shops...
           </div>
         ) : (
@@ -50,16 +50,16 @@ export default function ShopDirectory() {
               <Link
                 key={shop.id}
                 to={`/${shop.slug}`}
-                className="p-6 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 hover:border-crimson-pink hover:shadow-neon-glow shadow-glass-panel transition-all cursor-pointer flex items-center gap-5 group"
+                className="p-6 rounded-2xl backdrop-blur-xl bg-white/60 border border-white/80 hover:border-rose-red hover:bg-white/80 hover:shadow-rose-glow shadow-glass-panel transition-all cursor-pointer flex items-center gap-5 group"
               >
-                <div className="text-3xl bg-navy-blue/10 p-4 rounded-xl border border-navy-blue/10 group-hover:border-crimson-pink/50 transition-all">
+                <div className="text-3xl bg-saffron-cherry/10 p-4 rounded-xl border border-saffron-cherry/20 group-hover:border-rose-red/50 transition-all">
                   ✂️
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-navy-blue group-hover:text-crimson-pink transition-colors">
+                  <h3 className="text-xl font-bold text-saffron-cherry group-hover:text-rose-red transition-colors">
                     {shop.name}
                   </h3>
-                  <p className="text-sm text-navy-blue/70 mt-1 font-medium">
+                  <p className="text-sm text-saffron-cherry/70 mt-1 font-semibold">
                     {shop.address}
                   </p>
                 </div>
