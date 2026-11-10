@@ -133,6 +133,32 @@ export default function BookingFlow() {
     "09:15 PM",
   ];
 
+  // Filter out past time slots if the selected date is today
+  const getAvailableTimeSlots = () => {
+    const now = new Date();
+    const isToday = selectedDate.toDateString() === now.toDateString();
+
+    if (!isToday) return timeSlots; // If it's a future date, return all slots
+
+    return timeSlots.filter((time) => {
+      // Parse "09:30 AM" into hours and minutes
+      const [timeStr, modifier] = time.split(" ");
+      let [hours, minutes] = timeStr.split(":");
+      let hoursInt = parseInt(hours, 10);
+
+      if (modifier === "PM" && hoursInt < 12) hoursInt += 12;
+      if (modifier === "AM" && hoursInt === 12) hoursInt = 0;
+
+      // Create a Date object for the time slot to compare against "now"
+      const slotTime = new Date(selectedDate);
+      slotTime.setHours(hoursInt, parseInt(minutes, 10), 0, 0);
+
+      return slotTime > now;
+    });
+  };
+
+  const activeTimeSlots = getAvailableTimeSlots();
+
   const generateDates = () => {
     const dates = [];
     const today = new Date();
@@ -382,7 +408,7 @@ export default function BookingFlow() {
               </p>
 
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {timeSlots.map((time, index) => (
+                {activeTimeSlots.map((time, index) => (
                   <button
                     key={index}
                     disabled={isBooking}
