@@ -26,6 +26,10 @@ export default function BookingFlow() {
   const [loading, setLoading] = useState(true);
   const [isBooking, setIsBooking] = useState(false);
 
+  // NEW: State to track which slots are already booked in the database
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+
+  // Load shop and services on mount
   useEffect(() => {
     async function loadShopServices() {
       if (!shop_slug) return;
@@ -52,6 +56,31 @@ export default function BookingFlow() {
 
     loadShopServices();
   }, [shop_slug]);
+
+  // NEW: Fetch booked slots whenever the user changes the Date or Barber
+  useEffect(() => {
+    async function fetchBookedSlots() {
+      if (!shopId || !selectedBarber || !selectedDate) return;
+
+      const dateString = selectedDate.toISOString().split("T")[0];
+
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("booking_time")
+        .eq("shop_id", shopId)
+        .eq("barber_name", selectedBarber)
+        .eq("booking_date", dateString)
+        .neq("status", "cancelled"); // Ignore cancelled bookings!
+
+      if (error) {
+        console.error("Error fetching booked slots:", error.message);
+      } else if (data) {
+        setBookedSlots(data.map((booking) => booking.booking_time));
+      }
+    }
+
+    fetchBookedSlots();
+  }, [shopId, selectedBarber, selectedDate]);
 
   const handleBookAppointment = async (time: string) => {
     if (!user) {
@@ -133,15 +162,13 @@ export default function BookingFlow() {
     "09:15 PM",
   ];
 
-  // Filter out past time slots if the selected date is today
   const getAvailableTimeSlots = () => {
     const now = new Date();
     const isToday = selectedDate.toDateString() === now.toDateString();
 
-    if (!isToday) return timeSlots; // If it's a future date, return all slots
+    if (!isToday) return timeSlots;
 
     return timeSlots.filter((time) => {
-      // Parse "09:30 AM" into hours and minutes
       const [timeStr, modifier] = time.split(" ");
       let [hours, minutes] = timeStr.split(":");
       let hoursInt = parseInt(hours, 10);
@@ -149,7 +176,6 @@ export default function BookingFlow() {
       if (modifier === "PM" && hoursInt < 12) hoursInt += 12;
       if (modifier === "AM" && hoursInt === 12) hoursInt = 0;
 
-      // Create a Date object for the time slot to compare against "now"
       const slotTime = new Date(selectedDate);
       slotTime.setHours(hoursInt, parseInt(minutes, 10), 0, 0);
 
@@ -408,16 +434,27 @@ export default function BookingFlow() {
               </p>
 
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {activeTimeSlots.map((time, index) => (
-                  <button
-                    key={index}
-                    disabled={isBooking}
-                    onClick={() => handleBookAppointment(time)}
-                    className="py-3.5 md:py-4 rounded-xl border border-white/80 bg-white/60 hover:bg-rose-red hover:border-rose-red hover:text-white transition-all text-sm font-extrabold text-saffron-cherry shadow-sm hover:shadow-rose-glow disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isBooking ? "..." : time}
-                  </button>
-                ))}
+                {activeTimeSlots.map((time, index) => {
+                  // NEW: Check if this slot exists in our Supabase fetched list
+                  const isBooked = bookedSlots.includes(time);
+
+                  return (
+                    <button
+                      key={index}
+                      disabled={isBooking || isBooked}
+                      onClick={() => handleBookAppointment(time)}
+                      className={`py-3.5 md:py-4 rounded-xl border transition-all text-sm font-extrabold shadow-sm
+                        ${
+                          isBooked
+                            ? "bg-white/20 border-white/30 text-saffron-cherry/30 cursor-not-allowed line-through"
+                            : "bg-white/60 border-white/80 hover:bg-rose-red hover:border-rose-red hover:text-white text-saffron-cherry hover:shadow-rose-glow disabled:opacity-50 disabled:cursor-not-allowed"
+                        }
+                      `}
+                    >
+                      {isBooking && !isBooked ? "..." : time}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
