@@ -26,8 +26,7 @@ export default function Dashboard() {
       const { data, error } = await supabase
         .from("bookings")
         .select("*")
-        // Note: This requires a user_id column in your Supabase bookings table.
-        // .eq("user_id", user.id)
+        .eq("user_id", user.id)
         .order("booking_date", { ascending: true });
 
       if (error) {
@@ -70,16 +69,21 @@ export default function Dashboard() {
     }
   };
 
-  const handleReschedule = (bookingId: string, rearrangeCount: number) => {
+  const handleReschedule = async (
+    bookingId: string,
+    rearrangeCount: number
+  ) => {
     if (rearrangeCount >= 2) {
       alert(
-        "You have reached the maximum number of rearrangements (2) for this appointment. Further changes will incur a fine. Please contact the shop directly."
+        "You have reached the maximum number of rearrangements (2) for this appointment. Further changes will incur a ₹50 fine. Please contact the shop directly."
       );
       return;
     }
+
     alert(
       `Rescheduling appointment. You have used ${rearrangeCount}/2 rearrangements.`
     );
+    // Future expansion: Actually update the database count here and navigate to picking a new time
   };
 
   if (!user) {
@@ -96,6 +100,18 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  const today = new Date().toISOString().split("T")[0];
+
+  const getDisplayStatus = (booking: Booking) => {
+    if (
+      booking.status === "cancelled" ||
+      booking.status === "cancelled_by_barber"
+    )
+      return "CANCELLED";
+    if (booking.booking_date < today) return "COMPLETED";
+    return "CONFIRMED";
+  };
 
   return (
     <div className="pt-12 pb-24 text-saffron-cherry">
@@ -127,83 +143,98 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {bookings.map((booking) => (
-              <div
-                key={booking.id}
-                className={`p-6 rounded-2xl backdrop-blur-xl border shadow-glass-panel transition-all
-                  ${
-                    booking.status === "cancelled"
-                      ? "bg-white/30 border-white/40 opacity-70"
-                      : "bg-white/60 border-white/80 hover:border-rose-red hover:shadow-rose-glow"
-                  }
-                `}
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <span
-                      className={`text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full 
-                      ${
-                        booking.status === "cancelled"
-                          ? "bg-saffron-cherry/20 text-saffron-cherry"
-                          : "bg-sunshine-yellow/50 text-saffron-cherry"
-                      }
-                    `}
-                    >
-                      {booking.status}
-                    </span>
-                    <h3 className="text-2xl font-bold mt-3 text-saffron-cherry">
-                      {new Date(booking.booking_date).toLocaleDateString(
-                        "en-US",
-                        { weekday: "short", month: "short", day: "numeric" }
-                      )}
-                    </h3>
-                    <p className="text-lg font-extrabold text-rose-red">
-                      {booking.booking_time}
-                    </p>
-                  </div>
-                  <div className="text-4xl">✂️</div>
-                </div>
+            {bookings.map((booking) => {
+              const displayStatus = getDisplayStatus(booking);
+              const isCancelled = displayStatus === "CANCELLED";
 
-                <div className="space-y-1 mb-6 text-sm font-semibold text-saffron-cherry/80">
-                  <p>
-                    Service:{" "}
-                    <span className="font-bold text-saffron-cherry">
-                      {booking.service_name}
-                    </span>
-                  </p>
-                  <p>
-                    Barber:{" "}
-                    <span className="font-bold text-saffron-cherry">
-                      {booking.barber_name}
-                    </span>
-                  </p>
-                  {booking.status !== "cancelled" && (
-                    <p className="text-xs mt-2 text-saffron-cherry/60">
-                      Rearrangements used: {booking.rearrange_count}/2
+              return (
+                <div
+                  key={booking.id}
+                  className={`p-6 rounded-2xl backdrop-blur-xl border shadow-glass-panel transition-all
+                    ${
+                      isCancelled
+                        ? "bg-white/30 border-white/40 opacity-70"
+                        : displayStatus === "COMPLETED"
+                        ? "bg-saffron-cherry/5 border-saffron-cherry/20 opacity-80"
+                        : "bg-white/60 border-white/80 hover:border-rose-red hover:shadow-rose-glow"
+                    }
+                  `}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <span
+                        className={`text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full 
+                        ${
+                          isCancelled
+                            ? "bg-saffron-cherry/20 text-saffron-cherry"
+                            : displayStatus === "COMPLETED"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-sunshine-yellow/50 text-saffron-cherry"
+                        }
+                      `}
+                      >
+                        {displayStatus}
+                      </span>
+                      <h3 className="text-2xl font-bold mt-3 text-saffron-cherry">
+                        {new Date(booking.booking_date).toLocaleDateString(
+                          "en-US",
+                          { weekday: "short", month: "short", day: "numeric" }
+                        )}
+                      </h3>
+                      <p className="text-lg font-extrabold text-rose-red">
+                        {booking.booking_time}
+                      </p>
+                    </div>
+                    <div className="text-4xl">✂️</div>
+                  </div>
+
+                  {booking.status === "cancelled_by_barber" && (
+                    <div className="mb-4 bg-rose-red/10 border border-rose-red/20 rounded-xl p-3 text-sm font-bold text-rose-red">
+                      Sorry, your appointment was cancelled by the shop.
+                    </div>
+                  )}
+
+                  <div className="space-y-1 mb-6 text-sm font-semibold text-saffron-cherry/80">
+                    <p>
+                      Service:{" "}
+                      <span className="font-bold text-saffron-cherry">
+                        {booking.service_name}
+                      </span>
                     </p>
+                    <p>
+                      Barber:{" "}
+                      <span className="font-bold text-saffron-cherry">
+                        {booking.barber_name}
+                      </span>
+                    </p>
+                    {!isCancelled && displayStatus !== "COMPLETED" && (
+                      <p className="text-xs mt-2 text-saffron-cherry/60">
+                        Rearrangements used: {booking.rearrange_count}/2
+                      </p>
+                    )}
+                  </div>
+
+                  {!isCancelled && displayStatus !== "COMPLETED" && (
+                    <div className="flex gap-3 pt-4 border-t border-saffron-cherry/10">
+                      <button
+                        onClick={() =>
+                          handleReschedule(booking.id, booking.rearrange_count)
+                        }
+                        className="flex-1 py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 hover:border-sunshine-yellow hover:bg-sunshine-yellow/20 text-saffron-cherry font-bold text-sm transition-all"
+                      >
+                        Reschedule
+                      </button>
+                      <button
+                        onClick={() => handleCancel(booking.id)}
+                        className="flex-1 py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 hover:border-rose-red hover:bg-rose-red hover:text-white text-saffron-cherry font-bold text-sm transition-all"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   )}
                 </div>
-
-                {booking.status !== "cancelled" && (
-                  <div className="flex gap-3 pt-4 border-t border-saffron-cherry/10">
-                    <button
-                      onClick={() =>
-                        handleReschedule(booking.id, booking.rearrange_count)
-                      }
-                      className="flex-1 py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 hover:border-sunshine-yellow hover:bg-sunshine-yellow/20 text-saffron-cherry font-bold text-sm transition-all"
-                    >
-                      Reschedule
-                    </button>
-                    <button
-                      onClick={() => handleCancel(booking.id)}
-                      className="flex-1 py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 hover:border-rose-red hover:bg-rose-red hover:text-white text-saffron-cherry font-bold text-sm transition-all"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

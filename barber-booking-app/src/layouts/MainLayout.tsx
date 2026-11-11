@@ -1,8 +1,37 @@
 import { Outlet, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import devLogo from "../assets/Dev.png";
 import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
+
 export default function MainLayout() {
   const { user } = useAuth();
+  const [isBarber, setIsBarber] = useState(false);
+
+  // NEW: Check if the logged-in user is in the barbers database
+  useEffect(() => {
+    async function checkBarberStatus() {
+      if (!user) {
+        setIsBarber(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("barbers")
+        .select("id")
+        .eq("user_id", user.id)
+        .single(); // Look for a single matching record
+
+      if (data) {
+        setIsBarber(true); // They are a barber!
+      } else {
+        setIsBarber(false);
+      }
+    }
+
+    checkBarberStatus();
+  }, [user]);
+
   return (
     <div className="min-h-screen font-sans flex flex-col relative overflow-hidden bg-warm-ivory text-saffron-cherry transition-colors duration-500">
       {/* VISIONARY AURORA BACKGROUND */}
@@ -27,7 +56,6 @@ export default function MainLayout() {
           </Link>
 
           <div className="flex gap-6 items-center">
-            {/* Show Dashboard link ONLY if the user is logged in */}
             {user && (
               <Link
                 to="/dashboard"
@@ -37,12 +65,25 @@ export default function MainLayout() {
               </Link>
             )}
 
-            <Link
-              to="/portal/login"
-              className="text-sm font-semibold text-white/90 hover:text-sunshine-yellow transition-colors duration-500"
-            >
-              Barber Portal
-            </Link>
+            {/* CONDITIONAL RENDER: Only show if isBarber is true */}
+            {isBarber ? (
+              <Link
+                to="/portal"
+                className="text-sm font-semibold text-white/90 hover:text-sunshine-yellow transition-colors duration-500"
+              >
+                Barber Portal
+              </Link>
+            ) : (
+              /* If they aren't a barber, we can optionally show a Login button if they aren't signed in at all */
+              !user && (
+                <Link
+                  to="/auth"
+                  className="text-sm font-semibold text-white/90 hover:text-sunshine-yellow transition-colors duration-500"
+                >
+                  Sign In
+                </Link>
+              )
+            )}
           </div>
         </div>
       </nav>
