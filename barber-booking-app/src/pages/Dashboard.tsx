@@ -83,7 +83,6 @@ export default function Dashboard() {
     alert(
       `Rescheduling appointment. You have used ${rearrangeCount}/2 rearrangements.`
     );
-    // Future expansion: Actually update the database count here and navigate to picking a new time
   };
 
   if (!user) {
@@ -216,14 +215,29 @@ export default function Dashboard() {
 
                   {!isCancelled && displayStatus !== "COMPLETED" && (
                     <div className="flex gap-3 pt-4 border-t border-saffron-cherry/10">
-                      <button
-                        onClick={() =>
-                          handleReschedule(booking.id, booking.rearrange_count)
-                        }
-                        className="flex-1 py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 hover:border-sunshine-yellow hover:bg-sunshine-yellow/20 text-saffron-cherry font-bold text-sm transition-all"
-                      >
-                        Reschedule
-                      </button>
+                      {/* NEW: Tooltip Wrapper for Reschedule Button */}
+                      <div className="relative flex-1 group">
+                        <button
+                          onClick={() =>
+                            handleReschedule(
+                              booking.id,
+                              booking.rearrange_count
+                            )
+                          }
+                          className="w-full py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 hover:border-sunshine-yellow hover:bg-sunshine-yellow/20 text-saffron-cherry font-bold text-sm transition-all"
+                        >
+                          Reschedule
+                        </button>
+
+                        {/* The Tooltip */}
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-saffron-cherry text-white text-xs font-bold rounded-xl shadow-glass-panel opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10 pointer-events-none text-center">
+                          Max 2 reschedules allowed. Exceeding this incurs a ₹50
+                          penalty.
+                          {/* Triangle Pointer */}
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-saffron-cherry"></div>
+                        </div>
+                      </div>
+
                       <button
                         onClick={() => handleCancel(booking.id)}
                         className="flex-1 py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 hover:border-rose-red hover:bg-rose-red hover:text-white text-saffron-cherry font-bold text-sm transition-all"

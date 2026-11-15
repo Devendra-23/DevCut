@@ -26,10 +26,10 @@ export default function BookingFlow() {
   const [loading, setLoading] = useState(true);
   const [isBooking, setIsBooking] = useState(false);
 
-  // NEW: State to track which slots are already booked in the database
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  // NEW: State to track if the current user already has a booking on this date
+  const [hasExistingBooking, setHasExistingBooking] = useState(false);
 
-  // Load shop and services on mount
   useEffect(() => {
     async function loadShopServices() {
       if (!shop_slug) return;
@@ -57,7 +57,7 @@ export default function BookingFlow() {
     loadShopServices();
   }, [shop_slug]);
 
-  // NEW: Fetch booked slots whenever the user changes the Date or Barber
+  // Fetch booked slots for the selected date to prevent double booking
   useEffect(() => {
     async function fetchBookedSlots() {
       if (!shopId || !selectedBarber || !selectedDate) return;
@@ -70,7 +70,8 @@ export default function BookingFlow() {
         .eq("shop_id", shopId)
         .eq("barber_name", selectedBarber)
         .eq("booking_date", dateString)
-        .neq("status", "cancelled"); // Ignore cancelled bookings!
+        .neq("status", "cancelled")
+        .neq("status", "cancelled_by_barber");
 
       if (error) {
         console.error("Error fetching booked slots:", error.message);
@@ -81,6 +82,37 @@ export default function BookingFlow() {
 
     fetchBookedSlots();
   }, [shopId, selectedBarber, selectedDate]);
+
+  // NEW: Check if the logged-in user already has a booking on the selected date
+  useEffect(() => {
+    async function checkUserDailyLimit() {
+      if (!user || !selectedDate || !shopId) {
+        setHasExistingBooking(false);
+        return;
+      }
+
+      const dateString = selectedDate.toISOString().split("T")[0];
+
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("shop_id", shopId)
+        .eq("booking_date", dateString)
+        .neq("status", "cancelled")
+        .neq("status", "cancelled_by_barber");
+
+      if (error) {
+        console.error("Error checking user limits:", error.message);
+      } else if (data && data.length > 0) {
+        setHasExistingBooking(true);
+      } else {
+        setHasExistingBooking(false);
+      }
+    }
+
+    checkUserDailyLimit();
+  }, [user, selectedDate, shopId]);
 
   const handleBookAppointment = async (time: string) => {
     if (!user) {
@@ -265,7 +297,6 @@ export default function BookingFlow() {
             <h2 className="text-xl font-extrabold mb-6 text-saffron-cherry">
               1. Select a Service
             </h2>
-
             {loading ? (
               <div className="text-center text-saffron-cherry/60 py-10 animate-pulse font-bold">
                 Loading services...
@@ -313,7 +344,6 @@ export default function BookingFlow() {
                 ← Back to Services
               </button>
             </div>
-
             <div className="grid grid-cols-2 gap-6 mt-8">
               {barbers.map((barber) => (
                 <BarberCard
@@ -433,29 +463,49 @@ export default function BookingFlow() {
                 </span>
               </p>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {activeTimeSlots.map((time, index) => {
-                  // NEW: Check if this slot exists in our Supabase fetched list
-                  const isBooked = bookedSlots.includes(time);
+              {/* NEW: Display lock screen if user already has an appointment today */}
+              {hasExistingBooking ? (
+                <div className="p-8 text-center bg-rose-red/10 border border-rose-red/20 rounded-2xl">
+                  <span className="text-4xl mb-4 block">📅</span>
+                  <h3 className="text-xl font-extrabold text-rose-red mb-2">
+                    Limit Reached
+                  </h3>
+                  <p className="text-saffron-cherry/80 font-semibold mb-6">
+                    You already have an active appointment scheduled for{" "}
+                    {formatDateLabel(selectedDate)}. To keep the calendar fair,
+                    we limit bookings to one per day.
+                  </p>
+                  <button
+                    onClick={() => navigate("/dashboard")}
+                    className="px-6 py-2.5 rounded-full bg-white text-rose-red border border-rose-red/30 hover:bg-rose-red hover:text-white font-bold transition-all shadow-sm"
+                  >
+                    View My Dashboard
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {activeTimeSlots.map((time, index) => {
+                    const isBooked = bookedSlots.includes(time);
 
-                  return (
-                    <button
-                      key={index}
-                      disabled={isBooking || isBooked}
-                      onClick={() => handleBookAppointment(time)}
-                      className={`py-3.5 md:py-4 rounded-xl border transition-all text-sm font-extrabold shadow-sm
-                        ${
-                          isBooked
-                            ? "bg-white/20 border-white/30 text-saffron-cherry/30 cursor-not-allowed line-through"
-                            : "bg-white/60 border-white/80 hover:bg-rose-red hover:border-rose-red hover:text-white text-saffron-cherry hover:shadow-rose-glow disabled:opacity-50 disabled:cursor-not-allowed"
-                        }
-                      `}
-                    >
-                      {isBooking && !isBooked ? "..." : time}
-                    </button>
-                  );
-                })}
-              </div>
+                    return (
+                      <button
+                        key={index}
+                        disabled={isBooking || isBooked}
+                        onClick={() => handleBookAppointment(time)}
+                        className={`py-3.5 md:py-4 rounded-xl border transition-all text-sm font-extrabold shadow-sm
+                          ${
+                            isBooked
+                              ? "bg-white/20 border-white/30 text-saffron-cherry/30 cursor-not-allowed line-through"
+                              : "bg-white/60 border-white/80 hover:bg-rose-red hover:border-rose-red hover:text-white text-saffron-cherry hover:shadow-rose-glow disabled:opacity-50 disabled:cursor-not-allowed"
+                          }
+                        `}
+                      >
+                        {isBooking && !isBooked ? "..." : time}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}

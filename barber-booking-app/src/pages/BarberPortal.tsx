@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../contexts/AuthContext";
 
 interface Booking {
   id: string;
@@ -14,15 +15,36 @@ interface Booking {
 }
 
 export default function BarberPortal() {
+  const { user } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
+  const [barberName, setBarberName] = useState<string>("");
 
   useEffect(() => {
-    async function fetchAllBookings() {
+    async function fetchBarberAndBookings() {
+      if (!user) return;
+
+      // 1. Identify which barber is currently logged in
+      const { data: barberData, error: barberError } = await supabase
+        .from("barbers")
+        .select("name")
+        .eq("user_id", user.id)
+        .single();
+
+      if (barberError || !barberData) {
+        console.error("Error fetching barber profile:", barberError?.message);
+        setLoading(false);
+        return;
+      }
+
+      setBarberName(barberData.name);
+
+      // 2. Fetch ONLY the bookings assigned to this specific barber
       const { data, error } = await supabase
         .from("bookings")
         .select("*")
+        .eq("barber_name", barberData.name) // <-- THE MAGIC FILTER!
         .order("booking_date", { ascending: true })
         .order("booking_time", { ascending: true });
 
@@ -34,8 +56,8 @@ export default function BarberPortal() {
       setLoading(false);
     }
 
-    fetchAllBookings();
-  }, []);
+    fetchBarberAndBookings();
+  }, [user]);
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -96,10 +118,10 @@ export default function BarberPortal() {
         <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3 text-saffron-cherry drop-shadow-sm">
-              Barber Portal
+              {barberName ? `${barberName}'s Calendar` : "Barber Portal"}
             </h1>
             <p className="text-saffron-cherry/80 text-lg font-semibold">
-              Manage shop appointments and daily schedules.
+              Manage your daily schedule and upcoming cuts.
             </p>
           </div>
 
@@ -190,9 +212,9 @@ export default function BarberPortal() {
                       </span>
                     </p>
                     <p className="flex justify-between">
-                      <span className="opacity-70">Barber:</span>
-                      <span className="font-extrabold">
-                        {booking.barber_name}
+                      <span className="opacity-70">Customer ID:</span>
+                      <span className="font-extrabold text-xs truncate max-w-[120px]">
+                        {booking.user_id || "Guest"}
                       </span>
                     </p>
                   </div>
