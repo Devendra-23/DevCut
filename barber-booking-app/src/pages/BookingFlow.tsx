@@ -11,6 +11,12 @@ interface Service {
   duration_minutes: number;
 }
 
+interface Barber {
+  id: string;
+  name: string;
+  image: string;
+}
+
 export default function BookingFlow() {
   const { shop_slug } = useParams();
   const navigate = useNavigate();
@@ -23,15 +29,15 @@ export default function BookingFlow() {
 
   const [shopId, setShopId] = useState<string | null>(null);
   const [services, setServices] = useState<Service[]>([]);
+  const [team, setTeam] = useState<Barber[]>([]);
   const [loading, setLoading] = useState(true);
   const [isBooking, setIsBooking] = useState(false);
 
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
-  // NEW: State to track if the current user already has a booking on this date
   const [hasExistingBooking, setHasExistingBooking] = useState(false);
 
   useEffect(() => {
-    async function loadShopServices() {
+    async function loadShopData() {
       if (!shop_slug) return;
 
       const { data: shopData } = await supabase
@@ -42,29 +48,33 @@ export default function BookingFlow() {
 
       if (shopData) {
         setShopId(shopData.id);
+
         const { data: servicesData } = await supabase
           .from("services")
           .select("*")
           .eq("shop_id", shopData.id);
+        if (servicesData) setServices(servicesData);
 
-        if (servicesData) {
-          setServices(servicesData);
-        }
+        // Fetches only bookable barbers
+        const { data: barbersData } = await supabase
+          .from("barbers")
+          .select("id, name, image")
+          .eq("shop_id", shopData.id)
+          .eq("is_bookable", true)
+          .order("name", { ascending: true });
+        if (barbersData) setTeam(barbersData);
       }
       setLoading(false);
     }
 
-    loadShopServices();
+    loadShopData();
   }, [shop_slug]);
 
-  // Fetch booked slots for the selected date to prevent double booking
   useEffect(() => {
     async function fetchBookedSlots() {
       if (!shopId || !selectedBarber || !selectedDate) return;
-
       const dateString = selectedDate.toISOString().split("T")[0];
-
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("bookings")
         .select("booking_time")
         .eq("shop_id", shopId)
@@ -73,27 +83,19 @@ export default function BookingFlow() {
         .neq("status", "cancelled")
         .neq("status", "cancelled_by_barber");
 
-      if (error) {
-        console.error("Error fetching booked slots:", error.message);
-      } else if (data) {
-        setBookedSlots(data.map((booking) => booking.booking_time));
-      }
+      if (data) setBookedSlots(data.map((booking) => booking.booking_time));
     }
-
     fetchBookedSlots();
   }, [shopId, selectedBarber, selectedDate]);
 
-  // NEW: Check if the logged-in user already has a booking on the selected date
   useEffect(() => {
     async function checkUserDailyLimit() {
       if (!user || !selectedDate || !shopId) {
         setHasExistingBooking(false);
         return;
       }
-
       const dateString = selectedDate.toISOString().split("T")[0];
-
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("bookings")
         .select("id")
         .eq("user_id", user.id)
@@ -102,15 +104,9 @@ export default function BookingFlow() {
         .neq("status", "cancelled")
         .neq("status", "cancelled_by_barber");
 
-      if (error) {
-        console.error("Error checking user limits:", error.message);
-      } else if (data && data.length > 0) {
-        setHasExistingBooking(true);
-      } else {
-        setHasExistingBooking(false);
-      }
+      if (data && data.length > 0) setHasExistingBooking(true);
+      else setHasExistingBooking(false);
     }
-
     checkUserDailyLimit();
   }, [user, selectedDate, shopId]);
 
@@ -120,7 +116,6 @@ export default function BookingFlow() {
       navigate("/auth");
       return;
     }
-
     if (!shopId || !selectedService || !selectedBarber || !selectedDate) return;
 
     setIsBooking(true);
@@ -137,9 +132,7 @@ export default function BookingFlow() {
           rearrange_count: 0,
         },
       ]);
-
       if (error) throw error;
-
       alert(`Success! Your appointment with ${selectedBarber} is confirmed.`);
       navigate("/dashboard");
     } catch (err: any) {
@@ -169,11 +162,6 @@ export default function BookingFlow() {
       "https://www.google.com/maps/dir/?api=1&destination=Paani's+Hair+Studio&destination_place_id=ChIJFd5tSwC55zsRibZxgeJZSP0",
   };
 
-  const barbers = [
-    { id: 1, name: "Kaana", image: "🧔🏻‍♂️" },
-    { id: 2, name: "Anil", image: "🧔🏽‍♂️" },
-  ];
-
   const timeSlots = [
     "09:30 AM",
     "10:15 AM",
@@ -197,20 +185,15 @@ export default function BookingFlow() {
   const getAvailableTimeSlots = () => {
     const now = new Date();
     const isToday = selectedDate.toDateString() === now.toDateString();
-
     if (!isToday) return timeSlots;
-
     return timeSlots.filter((time) => {
       const [timeStr, modifier] = time.split(" ");
       let [hours, minutes] = timeStr.split(":");
       let hoursInt = parseInt(hours, 10);
-
       if (modifier === "PM" && hoursInt < 12) hoursInt += 12;
       if (modifier === "AM" && hoursInt === 12) hoursInt = 0;
-
       const slotTime = new Date(selectedDate);
       slotTime.setHours(hoursInt, parseInt(minutes, 10), 0, 0);
-
       return slotTime > now;
     });
   };
@@ -240,39 +223,46 @@ export default function BookingFlow() {
   return (
     <div className="pt-12 pb-24 text-saffron-cherry">
       <div className="max-w-4xl mx-auto px-6">
-        {/* Shop Info Header */}
+        {/* RESPONSIVE SHOP HEADER */}
         <div className="mb-12 text-center">
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 capitalize drop-shadow-sm text-saffron-cherry">
             {displayShopName}
           </h1>
 
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 text-sm text-saffron-cherry/80 mb-8 font-semibold">
-            <div className="flex items-center gap-3 max-w-sm text-center md:text-left">
-              <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-saffron-cherry/10 border border-saffron-cherry/20">
-                📍
-              </span>
-              <span className="leading-snug">{shopInfo.address}</span>
+          <div className="flex justify-center mb-8">
+            <div className="flex flex-col items-start md:flex-row md:items-center gap-5 md:gap-6 text-sm text-saffron-cherry/80 font-semibold">
+              {/* ADDRESS BLOCK */}
+              <div className="flex items-start md:items-center gap-3 max-w-[280px] sm:max-w-sm text-left">
+                <div className="shrink-0 min-w-[32px] min-h-[32px] w-8 h-8 flex items-center justify-center rounded-full bg-saffron-cherry/10 border border-saffron-cherry/20 mt-0.5 md:mt-0">
+                  📍
+                </div>
+                <div className="leading-snug">{shopInfo.address}</div>
+              </div>
+
+              <div className="hidden md:block w-px h-10 bg-saffron-cherry/20"></div>
+
+              {/* CLOCK BLOCK (Now perfectly left-aligned with the pin on mobile) */}
+              <div className="flex items-center gap-3 text-left">
+                <div className="shrink-0 min-w-[32px] min-h-[32px] w-8 h-8 flex items-center justify-center rounded-full bg-saffron-cherry/10 border border-saffron-cherry/20">
+                  🕒
+                </div>
+                <div className="whitespace-nowrap">{shopInfo.hours}</div>
+              </div>
+
+              <div className="hidden md:block w-px h-10 bg-saffron-cherry/20"></div>
+
+              <a
+                href={shopInfo.mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="self-center md:self-auto mt-1 md:mt-0 px-6 py-2.5 rounded-full bg-rose-red hover:bg-[#C91A44] text-white shadow-rose-glow hover:shadow-lg transition-all font-bold whitespace-nowrap shrink-0"
+              >
+                Get Directions
+              </a>
             </div>
-            <div className="hidden md:block w-px h-10 bg-saffron-cherry/20"></div>
-            <div className="flex items-center gap-3">
-              <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-saffron-cherry/10 border border-saffron-cherry/20">
-                🕒
-              </span>
-              <span className="whitespace-nowrap">{shopInfo.hours}</span>
-            </div>
-            <div className="hidden md:block w-px h-10 bg-saffron-cherry/20"></div>
-            <a
-              href={shopInfo.mapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 md:mt-0 px-6 py-2.5 rounded-full bg-rose-red hover:bg-[#C91A44] text-white shadow-rose-glow hover:shadow-lg transition-all font-bold whitespace-nowrap"
-            >
-              Get Directions
-            </a>
           </div>
 
-          {/* Breadcrumbs */}
-          <div className="flex items-center justify-center gap-3 text-sm font-bold text-saffron-cherry/40">
+          <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 text-xs md:text-sm font-bold text-saffron-cherry/40">
             <span className={step >= 1 ? "text-rose-red font-extrabold" : ""}>
               Service
             </span>
@@ -330,52 +320,66 @@ export default function BookingFlow() {
           </div>
         )}
 
-        {/* STEP 2: Select Barber */}
+        {/* STEP 2: Select Barber (FLEX RESPONSIVE CENTERED) */}
         {step === 2 && (
           <div className="animate-in fade-in duration-500">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <h2 className="text-xl font-extrabold text-saffron-cherry">
                 2. Choose your Barber
               </h2>
               <button
                 onClick={() => setStep(1)}
-                className="text-sm font-bold text-saffron-cherry/70 hover:text-rose-red transition-colors"
+                className="text-sm font-bold text-saffron-cherry/70 hover:text-rose-red transition-colors text-left sm:text-right"
               >
                 ← Back to Services
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-6 mt-8">
-              {barbers.map((barber) => (
-                <BarberCard
-                  key={barber.id}
-                  name={barber.name}
-                  image={barber.image}
-                  isSelected={selectedBarber === barber.name}
-                  onClick={() => {
-                    setSelectedBarber(barber.name);
-                    setTimeout(() => setStep(3), 800);
-                  }}
-                />
-              ))}
-            </div>
+
+            {loading ? (
+              <div className="text-center text-saffron-cherry/60 py-10 animate-pulse font-bold">
+                Loading team...
+              </div>
+            ) : team.length === 0 ? (
+              <div className="text-center p-8 bg-white/50 rounded-2xl font-bold">
+                No barbers currently assigned to this shop.
+              </div>
+            ) : (
+              <div className="flex flex-wrap justify-center gap-6 mt-8">
+                {team.map((barber) => (
+                  <div
+                    key={barber.id}
+                    className="w-full sm:w-[calc(50%-12px)] md:w-[calc(33.333%-16px)] max-w-[260px]"
+                  >
+                    <BarberCard
+                      name={barber.name}
+                      image={barber.image}
+                      isSelected={selectedBarber === barber.name}
+                      onClick={() => {
+                        setSelectedBarber(barber.name);
+                        setTimeout(() => setStep(3), 800);
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {/* STEP 3: Select Date */}
         {step === 3 && (
           <div className="animate-in fade-in duration-500">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <h2 className="text-xl font-extrabold text-saffron-cherry">
                 3. Select a Date
               </h2>
               <button
                 onClick={() => setStep(2)}
-                className="text-sm font-bold text-saffron-cherry/70 hover:text-rose-red transition-colors"
+                className="text-sm font-bold text-saffron-cherry/70 hover:text-rose-red transition-colors text-left sm:text-right"
               >
                 ← Back to Barbers
               </button>
             </div>
-
             <div className="backdrop-blur-xl bg-white/60 border border-white/80 rounded-2xl p-6 md:p-8 shadow-glass-panel">
               <div className="flex gap-4 overflow-x-auto pb-6 snap-x hide-scrollbar">
                 {availableDates.map((date, index) => {
@@ -386,12 +390,11 @@ export default function BookingFlow() {
                     <button
                       key={index}
                       onClick={() => setSelectedDate(date)}
-                      className={`min-w-[110px] p-5 rounded-xl border snap-start transition-all flex flex-col items-center gap-2
-                        ${
-                          isSelected
-                            ? "bg-rose-red border-rose-red shadow-rose-glow text-white font-extrabold"
-                            : "bg-white/40 border-white/60 hover:border-rose-red/50 text-saffron-cherry font-bold hover:shadow-sm"
-                        }`}
+                      className={`min-w-[110px] p-5 rounded-xl border snap-start transition-all flex flex-col items-center gap-2 ${
+                        isSelected
+                          ? "bg-rose-red border-rose-red shadow-rose-glow text-white font-extrabold"
+                          : "bg-white/40 border-white/60 hover:border-rose-red/50 text-saffron-cherry font-bold hover:shadow-sm"
+                      }`}
                     >
                       <span
                         className={`text-xs font-extrabold uppercase tracking-wider ${
@@ -423,7 +426,7 @@ export default function BookingFlow() {
               <div className="mt-6 flex justify-end">
                 <button
                   onClick={() => setStep(4)}
-                  className="px-8 py-3 rounded-full bg-rose-red text-white hover:bg-[#C91A44] hover:shadow-rose-glow font-bold transition-all"
+                  className="w-full sm:w-auto px-8 py-3 rounded-full bg-rose-red text-white hover:bg-[#C91A44] hover:shadow-rose-glow font-bold transition-all"
                 >
                   Continue to Time
                 </button>
@@ -435,18 +438,17 @@ export default function BookingFlow() {
         {/* STEP 4: Select Time & Book */}
         {step === 4 && (
           <div className="animate-in fade-in duration-500">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <h2 className="text-xl font-extrabold text-saffron-cherry">
                 4. Select a Time
               </h2>
               <button
                 onClick={() => setStep(3)}
-                className="text-sm font-bold text-saffron-cherry/70 hover:text-rose-red transition-colors"
+                className="text-sm font-bold text-saffron-cherry/70 hover:text-rose-red transition-colors text-left sm:text-right"
               >
                 ← Back to Date
               </button>
             </div>
-
             <div className="backdrop-blur-xl bg-white/60 border border-white/80 rounded-2xl p-6 md:p-8 shadow-glass-panel">
               <p className="mb-8 text-saffron-cherry text-center md:text-left font-bold text-lg">
                 Booking{" "}
@@ -462,8 +464,6 @@ export default function BookingFlow() {
                   {formatDateLabel(selectedDate)}
                 </span>
               </p>
-
-              {/* NEW: Display lock screen if user already has an appointment today */}
               {hasExistingBooking ? (
                 <div className="p-8 text-center bg-rose-red/10 border border-rose-red/20 rounded-2xl">
                   <span className="text-4xl mb-4 block">📅</span>
@@ -477,28 +477,25 @@ export default function BookingFlow() {
                   </p>
                   <button
                     onClick={() => navigate("/dashboard")}
-                    className="px-6 py-2.5 rounded-full bg-white text-rose-red border border-rose-red/30 hover:bg-rose-red hover:text-white font-bold transition-all shadow-sm"
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-full bg-white text-rose-red border border-rose-red/30 hover:bg-rose-red hover:text-white font-bold transition-all shadow-sm"
                   >
                     View My Dashboard
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   {activeTimeSlots.map((time, index) => {
                     const isBooked = bookedSlots.includes(time);
-
                     return (
                       <button
                         key={index}
                         disabled={isBooking || isBooked}
                         onClick={() => handleBookAppointment(time)}
-                        className={`py-3.5 md:py-4 rounded-xl border transition-all text-sm font-extrabold shadow-sm
-                          ${
-                            isBooked
-                              ? "bg-white/20 border-white/30 text-saffron-cherry/30 cursor-not-allowed line-through"
-                              : "bg-white/60 border-white/80 hover:bg-rose-red hover:border-rose-red hover:text-white text-saffron-cherry hover:shadow-rose-glow disabled:opacity-50 disabled:cursor-not-allowed"
-                          }
-                        `}
+                        className={`py-3.5 md:py-4 rounded-xl border transition-all text-sm font-extrabold shadow-sm ${
+                          isBooked
+                            ? "bg-white/20 border-white/30 text-saffron-cherry/30 cursor-not-allowed line-through"
+                            : "bg-white/60 border-white/80 hover:bg-rose-red hover:border-rose-red hover:text-white text-saffron-cherry hover:shadow-rose-glow disabled:opacity-50 disabled:cursor-not-allowed"
+                        }`}
                       >
                         {isBooking && !isBooked ? "..." : time}
                       </button>

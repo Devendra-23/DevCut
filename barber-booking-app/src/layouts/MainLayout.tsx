@@ -1,4 +1,4 @@
-import { Outlet, Link } from "react-router-dom";
+import { Outlet, Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import devLogo from "../assets/Dev.png";
 import { useAuth } from "../contexts/AuthContext";
@@ -7,8 +7,15 @@ import { supabase } from "../lib/supabase";
 export default function MainLayout() {
   const { user } = useAuth();
   const [isBarber, setIsBarber] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
 
-  // NEW: Check if the logged-in user is in the barbers database
+  // Auto-close the mobile menu whenever the route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location]);
+
+  // Check if the logged-in user is in the barbers database
   useEffect(() => {
     async function checkBarberStatus() {
       if (!user) {
@@ -23,7 +30,7 @@ export default function MainLayout() {
         .single(); // Look for a single matching record
 
       if (data) {
-        setIsBarber(true); // They are a barber!
+        setIsBarber(true); // They are a barber/owner!
       } else {
         setIsBarber(false);
       }
@@ -44,7 +51,7 @@ export default function MainLayout() {
       {/* UNIFIED DARK NAVBAR */}
       <nav className="fixed top-0 w-full z-50 border-b border-white/10 bg-[#6F0317] backdrop-blur-xl shadow-md">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
+          <Link to="/" className="flex items-center gap-3 group z-50">
             <img
               src={devLogo}
               alt="DevCut Logo"
@@ -55,7 +62,8 @@ export default function MainLayout() {
             </span>
           </Link>
 
-          <div className="flex gap-6 items-center">
+          {/* DESKTOP NAVIGATION (Hidden on mobile) */}
+          <div className="hidden md:flex gap-6 items-center">
             {user && (
               <>
                 <Link
@@ -73,7 +81,6 @@ export default function MainLayout() {
               </>
             )}
 
-            {/* CONDITIONAL RENDER: Only show if isBarber is true */}
             {isBarber ? (
               <Link
                 to="/portal"
@@ -82,7 +89,6 @@ export default function MainLayout() {
                 Barber Portal
               </Link>
             ) : (
-              /* If they aren't a barber, we can optionally show a Login button if they aren't signed in at all */
               !user && (
                 <Link
                   to="/auth"
@@ -93,7 +99,85 @@ export default function MainLayout() {
               )
             )}
           </div>
+
+          {/* MOBILE MENU TOGGLE BUTTON (Hidden on desktop) */}
+          <button
+            className="md:hidden text-white/90 hover:text-sunshine-yellow focus:outline-none z-50 transition-colors"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? (
+              <svg
+                className="w-8 h-8"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            ) : (
+              <svg
+                className="w-8 h-8"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            )}
+          </button>
         </div>
+
+        {/* MOBILE SLIDE-DOWN DROPDOWN */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden absolute top-20 left-0 w-full bg-[#6F0317] border-b border-white/10 shadow-2xl animate-in slide-in-from-top-2 duration-300 z-40">
+            <div className="flex flex-col px-6 py-6 space-y-5">
+              {user && (
+                <>
+                  <Link
+                    to="/dashboard"
+                    className="text-lg font-bold text-white/90 hover:text-sunshine-yellow transition-colors"
+                  >
+                    My Dashboard
+                  </Link>
+                  <Link
+                    to="/profile"
+                    className="text-lg font-bold text-white/90 hover:text-sunshine-yellow transition-colors"
+                  >
+                    Profile
+                  </Link>
+                </>
+              )}
+
+              {isBarber ? (
+                <Link
+                  to="/portal"
+                  className="text-lg font-bold text-white/90 hover:text-sunshine-yellow transition-colors"
+                >
+                  Barber Portal
+                </Link>
+              ) : (
+                !user && (
+                  <Link
+                    to="/auth"
+                    className="text-lg font-bold text-white/90 hover:text-sunshine-yellow transition-colors"
+                  >
+                    Sign In
+                  </Link>
+                )
+              )}
+            </div>
+          </div>
+        )}
       </nav>
 
       <main className="flex-grow pt-20 relative z-10">

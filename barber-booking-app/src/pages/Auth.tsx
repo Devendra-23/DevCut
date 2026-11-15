@@ -58,8 +58,9 @@ export default function Auth() {
     "w-full p-4 rounded-xl backdrop-blur-sm bg-white/50 border border-white/80 text-saffron-cherry placeholder:text-saffron-cherry/50 focus:border-rose-red focus:bg-white/80 focus:ring-1 focus:ring-rose-red/30 outline-none transition-all shadow-sm font-medium";
 
   return (
-    <div className="min-h-[calc(100vh-100px)] flex items-center justify-center px-6 py-12 text-saffron-cherry">
-      <div className="w-full max-w-md p-8 rounded-2xl backdrop-blur-xl bg-white/60 border border-white/80 shadow-glass-panel">
+    <div className="min-h-[calc(100vh-100px)] flex items-center justify-center px-4 sm:px-6 py-12 text-saffron-cherry">
+      {/* RESPONSIVE PADDING: p-6 on mobile, p-8 on larger screens */}
+      <div className="w-full max-w-md p-6 sm:p-8 rounded-2xl backdrop-blur-xl bg-white/60 border border-white/80 shadow-glass-panel">
         <h2 className="text-3xl font-extrabold mb-8 text-center text-saffron-cherry tracking-tight">
           {isLogin ? "Welcome Back" : "Create Account"}
         </h2>
@@ -112,10 +113,11 @@ export default function Auth() {
             </p>
           )}
 
+          {/* TAP STATE: Added active:scale-[0.98] */}
           <button
             type="submit"
             disabled={loading}
-            className="mt-4 w-full p-4 rounded-xl bg-rose-red text-white font-bold tracking-wide hover:bg-[#C91A44] hover:shadow-rose-glow transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+            className="mt-4 w-full p-4 rounded-xl bg-rose-red text-white font-bold tracking-wide hover:bg-[#C91A44] hover:shadow-rose-glow transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
           >
             {loading ? "Processing..." : isLogin ? "Sign In" : "Register"}
           </button>

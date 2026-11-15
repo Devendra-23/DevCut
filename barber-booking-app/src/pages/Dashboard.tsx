@@ -358,13 +358,13 @@ export default function Dashboard() {
                               min={today}
                               value={newDate}
                               onChange={(e) => setNewDate(e.target.value)}
-                              className="px-4 py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 text-saffron-cherry font-bold focus:outline-none focus:border-rose-red"
+                              className="px-4 py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 text-saffron-cherry font-bold focus:outline-none focus:border-rose-red w-full"
                             />
                             <select
                               value={newTime}
                               onChange={(e) => setNewTime(e.target.value)}
                               disabled={!newDate}
-                              className="px-4 py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 text-saffron-cherry font-bold focus:outline-none focus:border-rose-red disabled:opacity-50 appearance-none"
+                              className="px-4 py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 text-saffron-cherry font-bold focus:outline-none focus:border-rose-red disabled:opacity-50 appearance-none w-full"
                             >
                               <option value="">Select Available Time</option>
                               {activeTimeSlots.map((time) => (
@@ -374,17 +374,19 @@ export default function Dashboard() {
                               ))}
                             </select>
                           </div>
-                          <div className="flex gap-3">
+
+                          {/* RESPONSIVE BUTTONS: Stack vertically on small screens, side-by-side on sm+ */}
+                          <div className="flex flex-col sm:flex-row gap-3">
                             <button
                               onClick={confirmReschedule}
                               disabled={!newDate || !newTime || isSaving}
-                              className="flex-1 py-2.5 rounded-xl bg-sunshine-yellow text-saffron-cherry font-bold text-sm hover:shadow-yellow-glow disabled:opacity-50 transition-all"
+                              className="w-full sm:flex-1 py-2.5 rounded-xl bg-sunshine-yellow text-saffron-cherry font-bold text-sm hover:shadow-yellow-glow disabled:opacity-50 transition-all"
                             >
                               {isSaving ? "Saving..." : "Confirm"}
                             </button>
                             <button
                               onClick={() => setRescheduleData(null)}
-                              className="flex-1 py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 hover:border-rose-red hover:bg-rose-red hover:text-white text-saffron-cherry font-bold text-sm transition-all"
+                              className="w-full sm:flex-1 py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 hover:border-rose-red hover:bg-rose-red hover:text-white text-saffron-cherry font-bold text-sm transition-all"
                             >
                               Cancel
                             </button>
