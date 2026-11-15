@@ -26,7 +26,7 @@ Animations: Framer Motion (for 3D Barber Cards)
 
 🚀 Completed Milestones (Built from Scratch)
 
-Global Architecture & Layout
+1. Global Architecture & Layout
 
 Configured tailwind.config.js with custom color palettes and shadow tokens.
 
@@ -34,7 +34,7 @@ Developed MainLayout.tsx featuring a global Aurora background and a unified fros
 
 Mobile-First Navigation: Engineered a responsive Hamburger menu that automatically collapses on route changes.
 
-User Authentication (Auth.tsx)
+2. User Authentication (Auth.tsx)
 
 Integrated Supabase Authentication.
 
@@ -44,13 +44,13 @@ Implemented automatic redirect logic routing users securely to the Home/Dashboar
 
 Optimized UI padding for mobile screens and added native touch-state feedback (active:scale).
 
-Core Directory (Home.tsx & ShopDirectory.tsx)
+3. Core Directory (Home.tsx & ShopDirectory.tsx)
 
 Home: Designed a premium landing page with high-contrast typography and dynamic CTA buttons.
 
 Directory: Built interactive, frosted-glass shop selection cards that stack dynamically on mobile devices.
 
-The Booking Engine & Slot Management (BookingFlow.tsx)
+4. The Booking Engine & Slot Management (BookingFlow.tsx)
 
 Engineered a fully responsive 4-step progressive booking flow (Service → Barber → Date → Time).
 
@@ -66,7 +66,7 @@ Daily Limits / Anti-Spam: Implemented a database query check to prevent a single
 
 Dynamic Team Rendering: Filters database queries using the is_bookable flag so shop admins are hidden from the public booking page.
 
-Customer Dashboard (Dashboard.tsx)
+5. Customer Dashboard (Dashboard.tsx)
 
 Developed a protected user portal to view upcoming and past appointments.
 
@@ -78,7 +78,7 @@ Penalty Logic UI: Designed a pure CSS tooltip utilizing Tailwind's group-hover u
 
 Inline Rescheduling Engine: Transformed the reschedule button into a seamless inline date/time picker that fetches available slots in real-time, increments rearrangement counts, safely updates the database, and locks the selection to the original barber to maintain calendar integrity.
 
-Barber Portal, Multi-Tenancy & Admin Controls (BarberPortal.tsx)
+6. Barber Portal, Multi-Tenancy & Admin Controls (BarberPortal.tsx)
 
 Engineered a protected dashboard strictly for verified barbers.
 
@@ -88,9 +88,11 @@ Granular Role-Based Access Control (RBAC): Implemented is_owner flags granting s
 
 Dynamic Menu & Staff Control: Owners can dynamically add new services, update pricing, and add/remove staff members directly from the UI, cascading instantly to the public booking page.
 
+Analytics Engine: Built an interactive data visualization dashboard using Recharts to track total revenue, cancellation rates, daily revenue timelines, and service distribution.
+
 Implemented conditional rendering in MainLayout.tsx to completely hide the portal link from standard customers.
 
-User Profiles (Profile.tsx)
+7. User Profiles (Profile.tsx)
 
 Engineered a dedicated /profile view for customers to manage their account details.
 
@@ -98,7 +100,7 @@ Synced display names directly with Supabase Authentication metadata.
 
 Built a dynamic statistics engine that queries the user's history to display their total lifetime haircuts and calculates their most frequently visited "Top Barber".
 
-Secure Database Architecture
+8. Secure Database Architecture
 
 Designed and executed the PostgreSQL schema in Supabase.
 

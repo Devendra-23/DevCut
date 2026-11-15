@@ -1,7 +1,17 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 interface Booking {
   id: string;
@@ -28,13 +38,15 @@ interface TeamMember {
   is_owner: boolean;
 }
 
+const CHART_COLORS = ["#E52150", "#F4EB06", "#6F0317", "#fb7185", "#fca5a5"];
+
 export default function BarberPortal() {
   const { user } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"upcoming" | "past" | "manage">(
-    "upcoming"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "upcoming" | "past" | "manage" | "analytics"
+  >("upcoming");
 
   const [barberName, setBarberName] = useState<string>("");
   const [isOwner, setIsOwner] = useState(false);
@@ -77,13 +89,20 @@ export default function BarberPortal() {
       setIsOwner(barberData.is_owner || false);
       setShopId(barberData.shop_id);
 
-      const { data: bookingData } = await supabase
+      // If owner, fetch ALL shop bookings. If just a barber, fetch only theirs.
+      let query = supabase
         .from("bookings")
         .select("*")
-        .eq("barber_name", barberData.name)
         .order("booking_date", { ascending: true })
         .order("booking_time", { ascending: true });
 
+      if (barberData.is_owner) {
+        query = query.eq("shop_id", barberData.shop_id);
+      } else {
+        query = query.eq("barber_name", barberData.name);
+      }
+
+      const { data: bookingData } = await query;
       if (bookingData) setBookings(bookingData);
 
       if (barberData.is_owner) {
@@ -155,7 +174,6 @@ export default function BarberPortal() {
       "Are you sure you want to cancel this customer's appointment?"
     );
     if (!confirmCancel) return;
-
     try {
       const { error } = await supabase
         .from("bookings")
@@ -172,6 +190,7 @@ export default function BarberPortal() {
     }
   };
 
+  // Setup Admin handlers (Save Shop, Add Service, Add Team)
   const handleSaveShopDetails = async () => {
     if (!shopId) return;
     setIsSaving(true);
@@ -228,9 +247,7 @@ export default function BarberPortal() {
         ])
         .select()
         .single();
-
       if (error) throw error;
-
       setServices((prev) => [...prev, data]);
       setNewServiceName("");
       setNewServicePrice("");
@@ -259,9 +276,7 @@ export default function BarberPortal() {
         ])
         .select()
         .single();
-
       if (error) throw error;
-
       setTeam((prev) => [...prev, data]);
       setNewBarberName("");
       alert(`${newBarberName} has been successfully added to the team!`);
@@ -274,25 +289,89 @@ export default function BarberPortal() {
 
   const handleRemoveTeamMember = async (barberId: string, name: string) => {
     const confirmDelete = window.confirm(
-      `Are you sure you want to remove ${name} from the shop? This will not delete their past bookings, but they will no longer appear on the booking page.`
+      `Are you sure you want to remove ${name}?`
     );
     if (!confirmDelete) return;
-
     try {
       const { error } = await supabase
         .from("barbers")
         .delete()
         .eq("id", barberId);
-
       if (error) throw error;
-
-      // Remove them from the local UI state
       setTeam((prev) => prev.filter((member) => member.id !== barberId));
-      alert(`${name} has been removed from the team.`);
     } catch (err: any) {
       alert("Failed to remove barber: " + err.message);
     }
   };
+
+  // --- ANALYTICS ENGINE LOGIC ---
+  const calculateAnalytics = () => {
+    let totalRevenue = 0;
+    let completedAppointments = 0;
+    let cancelledAppointments = 0;
+
+    const revenueByService: Record<string, number> = {};
+    const revenueByDate: Record<string, number> = {};
+
+    bookings.forEach((booking) => {
+      const isCancelled =
+        booking.status === "cancelled" ||
+        booking.status === "cancelled_by_barber";
+      if (isCancelled) {
+        cancelledAppointments++;
+        return;
+      }
+      if (booking.booking_date < today) {
+        completedAppointments++;
+        // Find price
+        const service = services.find((s) => s.name === booking.service_name);
+        const price = service ? service.price : 0;
+        totalRevenue += price;
+
+        // Group by service
+        revenueByService[booking.service_name] =
+          (revenueByService[booking.service_name] || 0) + price;
+
+        // Group by date (Last 7 days logic could be added, mapping all for now)
+        revenueByDate[booking.booking_date] =
+          (revenueByDate[booking.booking_date] || 0) + price;
+      }
+    });
+
+    const pieData = Object.keys(revenueByService)
+      .map((key) => ({
+        name: key,
+        value: revenueByService[key],
+      }))
+      .sort((a, b) => b.value - a.value); // Sort biggest first
+
+    // Sort dates chronologically for the bar chart
+    const barData = Object.keys(revenueByDate)
+      .sort()
+      .map((date) => ({
+        date: new Date(date).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        revenue: revenueByDate[date],
+      }))
+      .slice(-14); // Last 14 active days
+
+    const cancellationRate =
+      bookings.length > 0
+        ? Math.round((cancelledAppointments / bookings.length) * 100)
+        : 0;
+
+    return {
+      totalRevenue,
+      completedAppointments,
+      cancellationRate,
+      pieData,
+      barData,
+    };
+  };
+
+  const analytics = calculateAnalytics();
 
   return (
     <div className="pt-12 pb-24 text-saffron-cherry">
@@ -304,7 +383,7 @@ export default function BarberPortal() {
             </h1>
             <p className="text-saffron-cherry/80 text-lg font-semibold">
               {isOwner
-                ? "Manage your schedule and shop settings."
+                ? "Manage your schedule, shop settings, and analytics."
                 : "Manage your daily schedule and upcoming cuts."}
             </p>
           </div>
@@ -329,19 +408,31 @@ export default function BarberPortal() {
                   : "text-saffron-cherry hover:bg-white/50"
               }`}
             >
-              Past / Cancelled
+              Past
             </button>
             {isOwner && (
-              <button
-                onClick={() => setActiveTab("manage")}
-                className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all flex items-center gap-2 flex-shrink-0 ${
-                  activeTab === "manage"
-                    ? "bg-sunshine-yellow text-saffron-cherry shadow-yellow-glow"
-                    : "text-saffron-cherry hover:bg-white/50"
-                }`}
-              >
-                Manage Shop ⚙️
-              </button>
+              <>
+                <button
+                  onClick={() => setActiveTab("manage")}
+                  className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all flex items-center gap-2 flex-shrink-0 ${
+                    activeTab === "manage"
+                      ? "bg-sunshine-yellow text-saffron-cherry shadow-yellow-glow"
+                      : "text-saffron-cherry hover:bg-white/50"
+                  }`}
+                >
+                  Manage ⚙️
+                </button>
+                <button
+                  onClick={() => setActiveTab("analytics")}
+                  className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all flex items-center gap-2 flex-shrink-0 ${
+                    activeTab === "analytics"
+                      ? "bg-[#6F0317] text-white shadow-md"
+                      : "text-saffron-cherry hover:bg-white/50"
+                  }`}
+                >
+                  Analytics 📊
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -350,7 +441,173 @@ export default function BarberPortal() {
           <div className="text-center text-saffron-cherry/60 py-10 animate-pulse font-bold">
             Loading portal...
           </div>
+        ) : activeTab === "analytics" && isOwner ? (
+          /* --- ANALYTICS DASHBOARD --- */
+          <div className="animate-in fade-in duration-500">
+            {/* Top KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="p-6 rounded-2xl backdrop-blur-xl bg-white/60 border border-white/80 shadow-glass-panel">
+                <p className="text-sm font-extrabold text-saffron-cherry/70 uppercase tracking-wide mb-1">
+                  Total Revenue
+                </p>
+                <h3 className="text-4xl font-black text-rose-red">
+                  ₹{analytics.totalRevenue.toLocaleString()}
+                </h3>
+                <p className="text-xs font-bold text-saffron-cherry/60 mt-2">
+                  From completed appointments
+                </p>
+              </div>
+              <div className="p-6 rounded-2xl backdrop-blur-xl bg-white/60 border border-white/80 shadow-glass-panel">
+                <p className="text-sm font-extrabold text-saffron-cherry/70 uppercase tracking-wide mb-1">
+                  Completed Cuts
+                </p>
+                <h3 className="text-4xl font-black text-saffron-cherry">
+                  {analytics.completedAppointments}
+                </h3>
+                <p className="text-xs font-bold text-saffron-cherry/60 mt-2">
+                  Lifetime successful bookings
+                </p>
+              </div>
+              <div className="p-6 rounded-2xl backdrop-blur-xl bg-white/60 border border-white/80 shadow-glass-panel">
+                <p className="text-sm font-extrabold text-saffron-cherry/70 uppercase tracking-wide mb-1">
+                  Cancellation Rate
+                </p>
+                <h3 className="text-4xl font-black text-saffron-cherry">
+                  {analytics.cancellationRate}%
+                </h3>
+                <p className="text-xs font-bold text-saffron-cherry/60 mt-2">
+                  Of total scheduled appointments
+                </p>
+              </div>
+            </div>
+
+            {/* Charts Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Daily Revenue Bar Chart */}
+              <div className="p-6 rounded-2xl backdrop-blur-xl bg-white/60 border border-white/80 shadow-glass-panel">
+                <h2 className="text-xl font-bold mb-6 text-saffron-cherry">
+                  Revenue Timeline (Last 14 Active Days)
+                </h2>
+                {analytics.barData.length > 0 ? (
+                  <div className="h-72 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={analytics.barData}
+                        margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                      >
+                        <XAxis
+                          dataKey="date"
+                          stroke="#6F0317"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <YAxis
+                          stroke="#6F0317"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(val) => `₹${val}`}
+                        />
+                        <RechartsTooltip
+                          cursor={{ fill: "rgba(244, 235, 6, 0.2)" }}
+                          contentStyle={{
+                            borderRadius: "12px",
+                            border: "none",
+                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                            fontWeight: "bold",
+                            color: "#6F0317",
+                          }}
+                        />
+                        <Bar
+                          dataKey="revenue"
+                          fill="#E52150"
+                          radius={[6, 6, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-72 flex items-center justify-center text-saffron-cherry/50 font-bold">
+                    No revenue data yet.
+                  </div>
+                )}
+              </div>
+
+              {/* Service Distribution Pie Chart */}
+              <div className="p-6 rounded-2xl backdrop-blur-xl bg-white/60 border border-white/80 shadow-glass-panel">
+                <h2 className="text-xl font-bold mb-6 text-saffron-cherry">
+                  Revenue by Service
+                </h2>
+                {analytics.pieData.length > 0 ? (
+                  <div className="h-72 w-full flex flex-col md:flex-row items-center">
+                    <div className="w-full md:w-1/2 h-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={analytics.pieData}
+                            innerRadius={60}
+                            outerRadius={90}
+                            paddingAngle={5}
+                            dataKey="value"
+                            stroke="none"
+                          >
+                            {analytics.pieData.map((_, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={CHART_COLORS[index % CHART_COLORS.length]}
+                              />
+                            ))}
+                          </Pie>
+                          <RechartsTooltip
+                            formatter={(value: number) => `₹${value}`}
+                            contentStyle={{
+                              borderRadius: "12px",
+                              border: "none",
+                              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                              fontWeight: "bold",
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Custom Legend */}
+                    <div className="w-full md:w-1/2 mt-4 md:mt-0 flex flex-col gap-3">
+                      {analytics.pieData.map((entry, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-3 h-3 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  CHART_COLORS[index % CHART_COLORS.length],
+                              }}
+                            ></div>
+                            <span className="text-sm font-bold text-saffron-cherry truncate max-w-[120px]">
+                              {entry.name}
+                            </span>
+                          </div>
+                          <span className="text-sm font-extrabold text-rose-red">
+                            ₹{entry.value}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-72 flex items-center justify-center text-saffron-cherry/50 font-bold">
+                    No service data yet.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         ) : activeTab === "manage" && isOwner ? (
+          /* --- MANAGE SHOP SETTINGS (Existing Code) --- */
           <div className="animate-in fade-in duration-500">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
               <div className="p-8 rounded-2xl backdrop-blur-xl bg-white/60 border border-white/80 shadow-glass-panel">
@@ -454,8 +711,6 @@ export default function BarberPortal() {
                   <h3 className="text-sm font-extrabold text-saffron-cherry/70 uppercase tracking-wide mb-4">
                     Add New Service
                   </h3>
-
-                  {/* RESPONSIVE FLEX FORM */}
                   <div className="flex flex-col sm:flex-row gap-3 mb-4">
                     <input
                       type="text"
@@ -481,7 +736,6 @@ export default function BarberPortal() {
                       />
                     </div>
                   </div>
-
                   <button
                     onClick={handleAddService}
                     disabled={
@@ -525,7 +779,6 @@ export default function BarberPortal() {
                           </p>
                         </div>
                       </div>
-
                       {!member.is_owner && (
                         <button
                           onClick={() =>
@@ -580,12 +833,14 @@ export default function BarberPortal() {
             </div>
           </div>
         ) : displayBookings.length === 0 ? (
+          /* --- NO BOOKINGS STATE --- */
           <div className="p-10 rounded-2xl backdrop-blur-xl bg-white/60 border border-white/80 text-center shadow-glass-panel">
             <p className="text-xl font-bold mb-2 text-saffron-cherry">
               No {activeTab} appointments found.
             </p>
           </div>
         ) : (
+          /* --- APPOINTMENT CARDS --- */
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {displayBookings.map((booking) => {
               const displayStatus = getDisplayStatus(booking);
@@ -632,6 +887,12 @@ export default function BarberPortal() {
                       </span>
                     </p>
                     <p className="flex justify-between">
+                      <span className="opacity-70">Barber:</span>{" "}
+                      <span className="font-extrabold">
+                        {booking.barber_name}
+                      </span>
+                    </p>
+                    <p className="flex justify-between mt-2 pt-2 border-t border-saffron-cherry/10">
                       <span className="opacity-70">Customer ID:</span>{" "}
                       <span className="font-extrabold text-xs truncate max-w-[120px]">
                         {booking.user_id || "Guest"}
