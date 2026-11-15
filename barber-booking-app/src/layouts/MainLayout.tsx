@@ -57,12 +57,20 @@ export default function MainLayout() {
 
           <div className="flex gap-6 items-center">
             {user && (
-              <Link
-                to="/dashboard"
-                className="text-sm font-semibold text-white/90 hover:text-sunshine-yellow transition-colors duration-500"
-              >
-                My Dashboard
-              </Link>
+              <>
+                <Link
+                  to="/dashboard"
+                  className="text-sm font-semibold text-white/90 hover:text-sunshine-yellow transition-colors duration-500"
+                >
+                  My Dashboard
+                </Link>
+                <Link
+                  to="/profile"
+                  className="text-sm font-semibold text-white/90 hover:text-sunshine-yellow transition-colors duration-500"
+                >
+                  Profile
+                </Link>
+              </>
             )}
 
             {/* CONDITIONAL RENDER: Only show if isBarber is true */}

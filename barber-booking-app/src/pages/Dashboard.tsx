@@ -14,10 +14,42 @@ interface Booking {
   rearrange_count: number;
 }
 
+const timeSlots = [
+  "09:30 AM",
+  "10:15 AM",
+  "11:00 AM",
+  "11:45 AM",
+  "12:30 PM",
+  "01:15 PM",
+  "02:00 PM",
+  "02:45 PM",
+  "03:30 PM",
+  "04:15 PM",
+  "05:00 PM",
+  "05:45 PM",
+  "06:30 PM",
+  "07:15 PM",
+  "08:00 PM",
+  "08:45 PM",
+  "09:15 PM",
+];
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Reschedule State
+  const [rescheduleData, setRescheduleData] = useState<{
+    bookingId: string;
+    shopId: string;
+    barberName: string;
+    currentCount: number;
+  } | null>(null);
+  const [newDate, setNewDate] = useState("");
+  const [newTime, setNewTime] = useState("");
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     async function fetchUserBookings() {
@@ -44,6 +76,29 @@ export default function Dashboard() {
     fetchUserBookings();
   }, [user]);
 
+  // Fetch booked slots dynamically when the user picks a new date during rescheduling
+  useEffect(() => {
+    async function fetchBookedSlots() {
+      if (!rescheduleData || !newDate) return;
+
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("booking_time")
+        .eq("shop_id", rescheduleData.shopId)
+        .eq("barber_name", rescheduleData.barberName)
+        .eq("booking_date", newDate)
+        .neq("status", "cancelled")
+        .neq("status", "cancelled_by_barber");
+
+      if (error) {
+        console.error("Error fetching booked slots:", error.message);
+      } else if (data) {
+        setBookedSlots(data.map((b) => b.booking_time));
+      }
+    }
+    fetchBookedSlots();
+  }, [rescheduleData, newDate]);
+
   const handleCancel = async (bookingId: string) => {
     const confirmCancel = window.confirm(
       "Are you sure you want to cancel this appointment?"
@@ -69,20 +124,91 @@ export default function Dashboard() {
     }
   };
 
-  const handleReschedule = async (
-    bookingId: string,
-    rearrangeCount: number
-  ) => {
-    if (rearrangeCount >= 2) {
+  const initiateReschedule = (booking: Booking) => {
+    if (booking.rearrange_count >= 2) {
       alert(
         "You have reached the maximum number of rearrangements (2) for this appointment. Further changes will incur a ₹50 fine. Please contact the shop directly."
       );
       return;
     }
 
-    alert(
-      `Rescheduling appointment. You have used ${rearrangeCount}/2 rearrangements.`
-    );
+    // Open the inline reschedule form
+    setRescheduleData({
+      bookingId: booking.id,
+      shopId: booking.shop_id,
+      barberName: booking.barber_name,
+      currentCount: booking.rearrange_count,
+    });
+    setNewDate("");
+    setNewTime("");
+  };
+
+  const confirmReschedule = async () => {
+    if (!rescheduleData || !newDate || !newTime) return;
+    setIsSaving(true);
+
+    try {
+      const { error } = await supabase
+        .from("bookings")
+        .update({
+          booking_date: newDate,
+          booking_time: newTime,
+          rearrange_count: rescheduleData.currentCount + 1,
+        })
+        .eq("id", rescheduleData.bookingId);
+
+      if (error) throw error;
+
+      // Update local state immediately
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === rescheduleData.bookingId
+            ? {
+                ...b,
+                booking_date: newDate,
+                booking_time: newTime,
+                rearrange_count: b.rearrange_count + 1,
+              }
+            : b
+        )
+      );
+
+      alert("Appointment successfully rescheduled!");
+      setRescheduleData(null); // Close the form
+    } catch (err: any) {
+      alert("Failed to reschedule: " + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const getAvailableTimeSlots = () => {
+    if (!newDate) return [];
+
+    const now = new Date();
+    const selectedDateObj = new Date(newDate);
+    const isToday = selectedDateObj.toDateString() === now.toDateString();
+
+    return timeSlots.filter((time) => {
+      // 1. Filter out times already booked by other customers
+      if (bookedSlots.includes(time)) return false;
+
+      // 2. Filter out past times if the selected date is today
+      if (isToday) {
+        const [timeStr, modifier] = time.split(" ");
+        let [hours, minutes] = timeStr.split(":");
+        let hoursInt = parseInt(hours, 10);
+
+        if (modifier === "PM" && hoursInt < 12) hoursInt += 12;
+        if (modifier === "AM" && hoursInt === 12) hoursInt = 0;
+
+        const slotTime = new Date(selectedDateObj);
+        slotTime.setHours(hoursInt, parseInt(minutes, 10), 0, 0);
+
+        return slotTime > now;
+      }
+      return true;
+    });
   };
 
   if (!user) {
@@ -145,6 +271,9 @@ export default function Dashboard() {
             {bookings.map((booking) => {
               const displayStatus = getDisplayStatus(booking);
               const isCancelled = displayStatus === "CANCELLED";
+              const isReschedulingThis =
+                rescheduleData?.bookingId === booking.id;
+              const activeTimeSlots = getAvailableTimeSlots();
 
               return (
                 <div
@@ -155,6 +284,8 @@ export default function Dashboard() {
                         ? "bg-white/30 border-white/40 opacity-70"
                         : displayStatus === "COMPLETED"
                         ? "bg-saffron-cherry/5 border-saffron-cherry/20 opacity-80"
+                        : isReschedulingThis
+                        ? "bg-white/90 border-sunshine-yellow shadow-yellow-glow scale-[1.02]"
                         : "bg-white/60 border-white/80 hover:border-rose-red hover:shadow-rose-glow"
                     }
                   `}
@@ -214,36 +345,78 @@ export default function Dashboard() {
                   </div>
 
                   {!isCancelled && displayStatus !== "COMPLETED" && (
-                    <div className="flex gap-3 pt-4 border-t border-saffron-cherry/10">
-                      {/* NEW: Tooltip Wrapper for Reschedule Button */}
-                      <div className="relative flex-1 group">
-                        <button
-                          onClick={() =>
-                            handleReschedule(
-                              booking.id,
-                              booking.rearrange_count
-                            )
-                          }
-                          className="w-full py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 hover:border-sunshine-yellow hover:bg-sunshine-yellow/20 text-saffron-cherry font-bold text-sm transition-all"
-                        >
-                          Reschedule
-                        </button>
-
-                        {/* The Tooltip */}
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-saffron-cherry text-white text-xs font-bold rounded-xl shadow-glass-panel opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10 pointer-events-none text-center">
-                          Max 2 reschedules allowed. Exceeding this incurs a ₹50
-                          penalty.
-                          {/* Triangle Pointer */}
-                          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-saffron-cherry"></div>
+                    <div className="pt-4 border-t border-saffron-cherry/10">
+                      {/* INLINE RESCHEDULE FORM */}
+                      {isReschedulingThis ? (
+                        <div className="animate-in fade-in duration-300">
+                          <p className="text-sm font-bold text-saffron-cherry mb-3">
+                            Select new date & time:
+                          </p>
+                          <div className="flex flex-col gap-3 mb-4">
+                            <input
+                              type="date"
+                              min={today}
+                              value={newDate}
+                              onChange={(e) => setNewDate(e.target.value)}
+                              className="px-4 py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 text-saffron-cherry font-bold focus:outline-none focus:border-rose-red"
+                            />
+                            <select
+                              value={newTime}
+                              onChange={(e) => setNewTime(e.target.value)}
+                              disabled={!newDate}
+                              className="px-4 py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 text-saffron-cherry font-bold focus:outline-none focus:border-rose-red disabled:opacity-50 appearance-none"
+                            >
+                              <option value="">Select Available Time</option>
+                              {activeTimeSlots.map((time) => (
+                                <option key={time} value={time}>
+                                  {time}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex gap-3">
+                            <button
+                              onClick={confirmReschedule}
+                              disabled={!newDate || !newTime || isSaving}
+                              className="flex-1 py-2.5 rounded-xl bg-sunshine-yellow text-saffron-cherry font-bold text-sm hover:shadow-yellow-glow disabled:opacity-50 transition-all"
+                            >
+                              {isSaving ? "Saving..." : "Confirm"}
+                            </button>
+                            <button
+                              onClick={() => setRescheduleData(null)}
+                              className="flex-1 py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 hover:border-rose-red hover:bg-rose-red hover:text-white text-saffron-cherry font-bold text-sm transition-all"
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        /* DEFAULT BUTTONS (Reschedule & Cancel) */
+                        <div className="flex gap-3">
+                          <div className="relative flex-1 group">
+                            <button
+                              onClick={() => initiateReschedule(booking)}
+                              className="w-full py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 hover:border-sunshine-yellow hover:bg-sunshine-yellow/20 text-saffron-cherry font-bold text-sm transition-all"
+                            >
+                              Reschedule
+                            </button>
 
-                      <button
-                        onClick={() => handleCancel(booking.id)}
-                        className="flex-1 py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 hover:border-rose-red hover:bg-rose-red hover:text-white text-saffron-cherry font-bold text-sm transition-all"
-                      >
-                        Cancel
-                      </button>
+                            {/* Tooltip */}
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-saffron-cherry text-white text-xs font-bold rounded-xl shadow-glass-panel opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10 pointer-events-none text-center">
+                              Max 2 reschedules allowed. Exceeding this incurs a
+                              ₹50 penalty.
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-saffron-cherry"></div>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => handleCancel(booking.id)}
+                            className="flex-1 py-2.5 rounded-xl bg-white/50 border border-saffron-cherry/20 hover:border-rose-red hover:bg-rose-red hover:text-white text-saffron-cherry font-bold text-sm transition-all"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

@@ -70,6 +70,8 @@ Implemented dynamic status indicators (e.g., dynamically showing "COMPLETED" for
 
 Penalty Logic UI: Designed a pure CSS tooltip utilizing Tailwind's group-hover utility to proactively warn users of the ₹50 fine upon exceeding the 2-rearrangement limit.
 
+Inline Rescheduling Engine: Transformed the reschedule button into a seamless inline date/time picker that fetches available slots in real-time, increments rearrangement counts, safely updates the database, and locks the selection to the original barber to maintain calendar integrity.
+
 6. Barber Portal & Multi-Tenancy (BarberPortal.tsx)
 
 Engineered a protected dashboard strictly for verified barbers.
@@ -78,7 +80,15 @@ Row-Level Filtering / Multi-Tenancy: Reads the logged-in barber's identity and s
 
 Implemented conditional rendering in MainLayout.tsx to completely hide the portal link from standard customers.
 
-7. Secure Database Architecture
+7. User Profiles (Profile.tsx)
+
+Engineered a dedicated /profile view for customers to manage their account details.
+
+Synced display names directly with Supabase Authentication metadata.
+
+Built a dynamic statistics engine that queries the user's history to display their total lifetime haircuts and calculates their most frequently visited "Top Barber".
+
+8. Secure Database Architecture
 
 Designed and executed the PostgreSQL schema in Supabase.
 
@@ -90,6 +100,8 @@ Configured Row Level Security (RLS) ensuring users can only read, insert, and up
 
 🔜 Next Steps & Upcoming Features
 
-User Profiles: Create a /profile view for customers to manage their display names, contact info, and view booking stats.
+Admin Dashboard: Build a master view for platform owners to monitor all shops, track total appointments, and manage users across the ecosystem.
+
+Payment Integration: Implement a mock Stripe checkout flow for prepaying for haircuts or handling the ₹50 penalty fees.
 
 Email Webhooks (Optional): Integrate Supabase database webhooks to send styled confirmation emails upon successful booking.

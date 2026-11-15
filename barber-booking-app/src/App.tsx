@@ -7,6 +7,7 @@ import ShopDirectory from "./pages/ShopDirectory";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import BarberPortal from "./pages/BarberPortal"; // <-- 1. Import the new portal
+import Profile from "./pages/Profile";
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
             <Route path="/shops" element={<ShopDirectory />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/portal" element={<BarberPortal />} />{" "}
             {/* <-- 2. Add the route HERE (above shop_slug) */}
             <Route path="/:shop_slug" element={<BookingFlow />} />
