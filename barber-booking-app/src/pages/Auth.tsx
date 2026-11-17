@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function Auth() {
   const navigate = useNavigate();
+  const { user } = useAuth(); // Pull the current user from context
+
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -14,6 +17,13 @@ export default function Auth() {
     text: string;
     type: "error" | "success";
   } | null>(null);
+
+  // ROUTE GUARD: If a logged-in user tries to access the auth page (e.g. via back button), redirect them immediately
+  useEffect(() => {
+    if (user) {
+      navigate("/", { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,9 +40,9 @@ export default function Auth() {
 
         setMessage({ text: "Logged in successfully!", type: "success" });
 
-        // Redirect to the home page after a brief delay
+        // Redirect to the home page, using replace: true so they can't hit 'back' to return to login
         setTimeout(() => {
-          navigate("/");
+          navigate("/", { replace: true });
         }, 500);
       } else {
         const { error } = await supabase.auth.signUp({
@@ -57,9 +67,11 @@ export default function Auth() {
   const inputClasses =
     "w-full p-4 rounded-xl backdrop-blur-sm bg-white/50 border border-white/80 text-saffron-cherry placeholder:text-saffron-cherry/50 focus:border-rose-red focus:bg-white/80 focus:ring-1 focus:ring-rose-red/30 outline-none transition-all shadow-sm font-medium";
 
+  // Prevent flashing the login form for a split second while redirecting
+  if (user) return null;
+
   return (
     <div className="min-h-[calc(100vh-100px)] flex items-center justify-center px-4 sm:px-6 py-12 text-saffron-cherry">
-      {/* RESPONSIVE PADDING: p-6 on mobile, p-8 on larger screens */}
       <div className="w-full max-w-md p-6 sm:p-8 rounded-2xl backdrop-blur-xl bg-white/60 border border-white/80 shadow-glass-panel">
         <h2 className="text-3xl font-extrabold mb-8 text-center text-saffron-cherry tracking-tight">
           {isLogin ? "Welcome Back" : "Create Account"}
@@ -113,7 +125,6 @@ export default function Auth() {
             </p>
           )}
 
-          {/* TAP STATE: Added active:scale-[0.98] */}
           <button
             type="submit"
             disabled={loading}
