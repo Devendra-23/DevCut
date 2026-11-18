@@ -42,7 +42,9 @@ export default function Home() {
             <div className="flex flex-col md:flex-row items-center gap-4">
               <p className="font-medium">
                 Signed in as{" "}
-                <span className="font-bold text-rose-red">{user.email}</span>
+                <span className="font-bold text-rose-red">
+                  {user.user_metadata?.full_name || user.email}
+                </span>
               </p>
               <div className="hidden md:block w-px h-4 bg-saffron-cherry/20"></div>
               <button
