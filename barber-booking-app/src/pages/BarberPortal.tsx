@@ -16,6 +16,7 @@ import {
 interface Booking {
   id: string;
   shop_id: string;
+  user_id?: string;
   service_name: string;
   barber_name: string;
   booking_date: string;
@@ -36,6 +37,7 @@ interface TeamMember {
   name: string;
   image: string;
   is_owner: boolean;
+  email?: string | null;
 }
 
 const CHART_COLORS = ["#E52150", "#F4EB06", "#6F0317", "#fb7185", "#fca5a5"];
@@ -63,6 +65,7 @@ export default function BarberPortal() {
 
   // New Team Member State
   const [newBarberName, setNewBarberName] = useState("");
+  const [newBarberEmail, setNewBarberEmail] = useState("");
   const [newBarberImage, setNewBarberImage] = useState("🧔‍♂️");
 
   // New Service State
@@ -130,7 +133,7 @@ export default function BarberPortal() {
 
         const { data: teamData } = await supabase
           .from("barbers")
-          .select("id, name, image, is_owner")
+          .select("id, name, image, is_owner, email")
           .eq("shop_id", barberData.shop_id)
           .order("created_at", { ascending: true });
 
@@ -261,7 +264,7 @@ export default function BarberPortal() {
   };
 
   const handleAddTeamMember = async () => {
-    if (!newBarberName || !shopId) return;
+    if (!newBarberName.trim() || !newBarberEmail.trim() || !shopId) return;
     setIsSaving(true);
     try {
       const { data, error } = await supabase
@@ -269,7 +272,8 @@ export default function BarberPortal() {
         .insert([
           {
             shop_id: shopId,
-            name: newBarberName,
+            name: newBarberName.trim(),
+            email: newBarberEmail.trim(),
             image: newBarberImage,
             is_owner: false,
           },
@@ -279,7 +283,8 @@ export default function BarberPortal() {
       if (error) throw error;
       setTeam((prev) => [...prev, data]);
       setNewBarberName("");
-      alert(`${newBarberName} has been successfully added to the team!`);
+      setNewBarberEmail("");
+      alert(`${newBarberName.trim()} has been successfully added to the team!`);
     } catch (err: any) {
       alert("Failed to add team member: " + err.message);
     } finally {
@@ -332,7 +337,7 @@ export default function BarberPortal() {
         revenueByService[booking.service_name] =
           (revenueByService[booking.service_name] || 0) + price;
 
-        // Group by date (Last 7 days logic could be added, mapping all for now)
+        // Group by date
         revenueByDate[booking.booking_date] =
           (revenueByDate[booking.booking_date] || 0) + price;
       }
@@ -343,7 +348,7 @@ export default function BarberPortal() {
         name: key,
         value: revenueByService[key],
       }))
-      .sort((a, b) => b.value - a.value); // Sort biggest first
+      .sort((a, b) => b.value - a.value);
 
     // Sort dates chronologically for the bar chart
     const barData = Object.keys(revenueByDate)
@@ -607,7 +612,7 @@ export default function BarberPortal() {
             </div>
           </div>
         ) : activeTab === "manage" && isOwner ? (
-          /* --- MANAGE SHOP SETTINGS (Existing Code) --- */
+          /* --- MANAGE SHOP SETTINGS --- */
           <div className="animate-in fade-in duration-500">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
               <div className="p-8 rounded-2xl backdrop-blur-xl bg-white/60 border border-white/80 shadow-glass-panel">
@@ -777,6 +782,9 @@ export default function BarberPortal() {
                           <p className="text-xs font-semibold text-rose-red">
                             {member.is_owner ? "Shop Admin" : "Barber"}
                           </p>
+                          <p className="text-xs font-medium text-saffron-cherry/60">
+                            {member.email || "No notification email"}
+                          </p>
                         </div>
                       </div>
                       {!member.is_owner && (
@@ -811,6 +819,18 @@ export default function BarberPortal() {
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-saffron-cherry/70 mb-1">
+                        Barber Email (for booking alerts)
+                      </label>
+                      <input
+                        type="email"
+                        value={newBarberEmail}
+                        onChange={(e) => setNewBarberEmail(e.target.value)}
+                        placeholder="e.g. rahul@gmail.com"
+                        className="w-full px-4 py-2.5 rounded-xl bg-white/70 border border-white/80 text-saffron-cherry font-bold focus:outline-none focus:ring-2 focus:ring-rose-red/50 transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-saffron-cherry/70 mb-1">
                         Avatar / Emoji
                       </label>
                       <input
@@ -822,7 +842,11 @@ export default function BarberPortal() {
                     </div>
                     <button
                       onClick={handleAddTeamMember}
-                      disabled={isSaving || !newBarberName}
+                      disabled={
+                        isSaving ||
+                        !newBarberName.trim() ||
+                        !newBarberEmail.trim()
+                      }
                       className="w-full py-2.5 rounded-xl bg-sunshine-yellow text-saffron-cherry font-bold hover:shadow-yellow-glow disabled:opacity-50 transition-all"
                     >
                       {isSaving ? "Adding..." : "+ Add to Team"}
