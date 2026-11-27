@@ -18,16 +18,19 @@ The application utilizes a custom "Visionary Intelligence" design system.
 - **Backend & Auth:** Supabase (PostgreSQL, Row Level Security, Edge Functions, Database Webhooks)
 - **Email Automation:** Gmail SMTP (`nodemailer` over Port 465 SSL/TLS via Deno Edge Functions & Supabase Auth Custom SMTP)
 - **Data Visualization:** Recharts
-- **Animations:** Framer Motion (for 3D Barber Cards)
+- **Animations:** Framer Motion (3D Barber Cards & rotating Barber Pole component)
 - **Hosting Prep:** Vercel (SPA rewrite routing via `vercel.json`)
 
 ## 🚀 Completed Milestones (Built from Scratch)
 
-### 1. Global Architecture & Layout
+### 1. Global Architecture, Branding & Layout
 
 - Configured `tailwind.config.js` with custom color palettes and shadow tokens.
-- Developed `MainLayout.tsx` featuring a global Aurora background and a unified frosted-glass navigation bar.
+- Developed `MainLayout.tsx` featuring a global Aurora background, a unified frosted-glass navigation bar, and active-route highlighting (`text-sunshine-yellow`) across desktop and mobile views.
 - Mobile-First Navigation: Engineered a responsive Hamburger menu that automatically collapses on route changes.
+- Custom Animated Brand Component (`BarberPole.tsx`): Built a zero-dependency, reusable rotating 3D-style barber pole using Tailwind CSS cylindrical glass gradients and Framer Motion's infinite linear loop, paired cleanly alongside the navbar `DevCut` wordmark to preserve a minimalist landing layout.
+- Custom Browser Favicon (`public/favicon.svg`): Designed and wired a custom SVG browser tab icon blending the geometric `D` logo with a miniature barber pole.
+- Optimized barber role verification in `MainLayout.tsx` using `.maybeSingle()` to prevent console `406` errors for standard customers and ensure clean TypeScript production builds.
 
 ### 2. User Authentication (`Auth.tsx`)
 
@@ -39,7 +42,7 @@ The application utilizes a custom "Visionary Intelligence" design system.
 
 ### 3. Core Directory (`Home.tsx` & `ShopDirectory.tsx`)
 
-- Home: Designed a premium landing page with high-contrast typography and dynamic CTA buttons.
+- Home: Designed a minimalist, high-contrast landing page with dynamic CTA buttons and frosted-glass session status controls.
 - Directory: Built interactive, frosted-glass shop selection cards that stack dynamically on mobile devices.
 
 ### 4. The Booking Engine & Slot Management (`BookingFlow.tsx`)
@@ -95,7 +98,7 @@ The application utilizes a custom "Visionary Intelligence" design system.
 
 ### 10. Production Deployment Configuration
 
-- Added `vercel.json` SPA rewrite rules inside `barber-booking-app/` so client-side React Router paths (e.g., `/dashboard`, `/barber-portal`) resolve cleanly without `404` errors on page refreshes or direct visits.
+- Added `vercel.json` SPA rewrite rules inside `barber-booking-app/` so client-side React Router paths (e.g., `/dashboard`, `/portal`, `/profile`) resolve cleanly without `404` errors on page refreshes or direct visits.
 
 ## 🔜 Next Steps & Upcoming Features
 

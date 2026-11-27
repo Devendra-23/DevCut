@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { BarberPole } from "../components/ui/BarberPole";
 import devLogo from "../assets/Dev.png";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -23,21 +24,27 @@ export default function MainLayout() {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("barbers")
         .select("id")
         .eq("user_id", user.id)
-        .single(); // Look for a single matching record
+        .maybeSingle();
 
-      if (data) {
-        setIsBarber(true); // They are a barber/owner!
-      } else {
-        setIsBarber(false);
-      }
+      setIsBarber(Boolean(data));
     }
 
     checkBarberStatus();
   }, [user]);
+
+  const navLinkClass = (path: string, mobile = false) => {
+    const isActive = location.pathname === path;
+    const base = mobile ? "text-lg font-bold" : "text-sm font-semibold";
+    return `${base} transition-colors duration-300 ${
+      isActive
+        ? "text-sunshine-yellow"
+        : "text-white/90 hover:text-sunshine-yellow"
+    }`;
+  };
 
   return (
     <div className="min-h-screen font-sans flex flex-col relative overflow-hidden bg-warm-ivory text-saffron-cherry transition-colors duration-500">
@@ -49,7 +56,7 @@ export default function MainLayout() {
       </div>
 
       {/* UNIFIED DARK NAVBAR */}
-      <nav className="fixed top-0 w-full z-50 border-b border-white/10 bg-[#6F0317] backdrop-blur-xl shadow-md">
+      <nav className="fixed top-0 w-full z-50 border-b border-white/10 bg-[#6F0317]/95 backdrop-blur-xl shadow-md">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3 group z-50">
             <img
@@ -60,40 +67,33 @@ export default function MainLayout() {
             <span className="text-2xl font-bold tracking-tight text-white transition-colors duration-500">
               Dev<span className="text-rose-red">Cut</span>
             </span>
+            <BarberPole
+              size="xs"
+              variant="classic"
+              className="-ml-1 drop-shadow-[0_0_8px_rgba(255,255,255,0.28)] group-hover:scale-110 transition-transform duration-300"
+            />
           </Link>
 
           {/* DESKTOP NAVIGATION (Hidden on mobile) */}
           <div className="hidden md:flex gap-6 items-center">
             {user && (
               <>
-                <Link
-                  to="/dashboard"
-                  className="text-sm font-semibold text-white/90 hover:text-sunshine-yellow transition-colors duration-500"
-                >
+                <Link to="/dashboard" className={navLinkClass("/dashboard")}>
                   My Dashboard
                 </Link>
-                <Link
-                  to="/profile"
-                  className="text-sm font-semibold text-white/90 hover:text-sunshine-yellow transition-colors duration-500"
-                >
+                <Link to="/profile" className={navLinkClass("/profile")}>
                   Profile
                 </Link>
               </>
             )}
 
             {isBarber ? (
-              <Link
-                to="/portal"
-                className="text-sm font-semibold text-white/90 hover:text-sunshine-yellow transition-colors duration-500"
-              >
+              <Link to="/portal" className={navLinkClass("/portal")}>
                 Barber Portal
               </Link>
             ) : (
               !user && (
-                <Link
-                  to="/auth"
-                  className="text-sm font-semibold text-white/90 hover:text-sunshine-yellow transition-colors duration-500"
-                >
+                <Link to="/auth" className={navLinkClass("/auth")}>
                   Sign In
                 </Link>
               )
@@ -102,6 +102,8 @@ export default function MainLayout() {
 
           {/* MOBILE MENU TOGGLE BUTTON (Hidden on desktop) */}
           <button
+            type="button"
+            aria-label="Toggle navigation menu"
             className="md:hidden text-white/90 hover:text-sunshine-yellow focus:outline-none z-50 transition-colors"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
@@ -145,13 +147,13 @@ export default function MainLayout() {
                 <>
                   <Link
                     to="/dashboard"
-                    className="text-lg font-bold text-white/90 hover:text-sunshine-yellow transition-colors"
+                    className={navLinkClass("/dashboard", true)}
                   >
                     My Dashboard
                   </Link>
                   <Link
                     to="/profile"
-                    className="text-lg font-bold text-white/90 hover:text-sunshine-yellow transition-colors"
+                    className={navLinkClass("/profile", true)}
                   >
                     Profile
                   </Link>
@@ -159,18 +161,12 @@ export default function MainLayout() {
               )}
 
               {isBarber ? (
-                <Link
-                  to="/portal"
-                  className="text-lg font-bold text-white/90 hover:text-sunshine-yellow transition-colors"
-                >
+                <Link to="/portal" className={navLinkClass("/portal", true)}>
                   Barber Portal
                 </Link>
               ) : (
                 !user && (
-                  <Link
-                    to="/auth"
-                    className="text-lg font-bold text-white/90 hover:text-sunshine-yellow transition-colors"
-                  >
+                  <Link to="/auth" className={navLinkClass("/auth", true)}>
                     Sign In
                   </Link>
                 )
