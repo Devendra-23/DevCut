@@ -16,9 +16,10 @@ The application utilizes a custom "Visionary Intelligence" design system.
 - **Styling:** Tailwind CSS (with custom theme extensions and responsive media queries)
 - **Routing:** React Router v6
 - **Backend & Auth:** Supabase (PostgreSQL, Row Level Security, Edge Functions, Database Webhooks)
-- **Email Automation:** Resend API (via Deno Edge Functions)
+- **Email Automation:** Gmail SMTP (`nodemailer` over Port 465 SSL/TLS via Deno Edge Functions & Supabase Auth Custom SMTP)
 - **Data Visualization:** Recharts
 - **Animations:** Framer Motion (for 3D Barber Cards)
+- **Hosting Prep:** Vercel (SPA rewrite routing via `vercel.json`)
 
 ## 🚀 Completed Milestones (Built from Scratch)
 
@@ -30,7 +31,7 @@ The application utilizes a custom "Visionary Intelligence" design system.
 
 ### 2. User Authentication (`Auth.tsx`)
 
-- Integrated Supabase Authentication.
+- Integrated Supabase Authentication with Custom Gmail SMTP (Port 465 SSL/TLS) to lift default signup and password-reset rate limits for live users.
 - Built dynamic Login and Registration forms using glassmorphism.
 - Implemented automatic redirect logic routing users securely to the Home/Dashboard post-login.
 - Engineered a secure Route Guard utilizing React Router (`replace: true`) to intercept browser history traversal (the back-button bug), preventing authenticated users from rendering the login screen.
@@ -77,7 +78,7 @@ The application utilizes a custom "Visionary Intelligence" design system.
 ### 8. Secure Database Architecture
 
 - Designed and executed the PostgreSQL schema in Supabase across `bookings`, `shops`, `services`, `barbers`, and `profiles`.
-- Lock-and-Key Architecture: Built a `barbers` table linking user authentication IDs and notification email addresses to specific shop roles.
+- Lock-and-Key Architecture: Built a `barbers` table linking user authentication IDs and custom `email` addresses to specific shop roles for real-time notification routing.
 - Configured Row Level Security (RLS) ensuring users can only read, insert, and update their own booking records.
 - Authored strict RLS INSERT and DELETE policies enabling shop owners to autonomously manage their staff and services without compromising global database security.
 - Developed a PostgreSQL Database Trigger (`handle_new_user`) with an existing-user SQL backfill that automatically clones customer metadata (Name, Phone, and Email) from `auth.users` into `public.profiles`.
@@ -86,16 +87,19 @@ The application utilizes a custom "Visionary Intelligence" design system.
 ### 9. Real-Time Automated Email Notifications (`send-booking-email`)
 
 - Built and deployed a Supabase Edge Function (Deno/TypeScript) triggered automatically by the `bookings` `INSERT` Database Webhook.
+- Migrated from Resend sandbox testing to live, domain-free production delivery using **Gmail SMTP (Port 465 SSL/TLS)** via `nodemailer` and encrypted Supabase Edge Function Secrets (`GMAIL_USER`, `GMAIL_APP_PASSWORD`) backed by a dedicated service account and Google App Password.
 - Performs live parallel lookups across `profiles`, `shops`, `services`, and `barbers` to dynamically resolve customer contact info, shop details, service pricing, and the assigned barber's email.
-- Dispatches dual branded HTML emails in real time:
-  - **Customer Confirmation:** Confirms shop, chosen barber, service & price, date, and slot timing.
-  - **Barber Alert:** Notifies the assigned barber with the customer's name, phone number, service, date, and slot timing.
-- Includes a `TEST_MODE` toggle for safe sandbox testing via Resend with live production-recipient logging before switching to live delivery.
+- Verified real-time multi-inbox delivery of dual branded HTML emails:
+  - **Customer Confirmation:** Confirms shop, chosen barber, service & price, date, and slot timing directly to the customer's inbox.
+  - **Barber Alert:** Notifies the assigned barber in real time with the customer's name, clickable phone number, service, date, and slot timing.
+
+### 10. Production Deployment Configuration
+
+- Added `vercel.json` SPA rewrite rules inside `barber-booking-app/` so client-side React Router paths (e.g., `/dashboard`, `/barber-portal`) resolve cleanly without `404` errors on page refreshes or direct visits.
 
 ## 🔜 Next Steps & Upcoming Features
 
-- **Production Email Delivery:** Migrate `send-booking-email` from Resend sandbox mode to free Gmail SMTP (via Google App Password) for live customer and barber inbox delivery on Vercel without requiring a custom domain.
-- **Deployment:** Push codebase to GitHub and deploy to Vercel for live public access and shop demos.
+- **Live Vercel Launch & Post-Demo Cutover:** Push to GitHub, deploy to Vercel (pointing Root Directory to `barber-booking-app`), whitelist the production Vercel URL in Supabase Auth Redirect URLs, and update demo barber emails to live staff inboxes in `public.barbers`.
 - **Barber Portal Customer Details:** Display live customer names and clickable phone numbers from `public.profiles` on appointment cards instead of raw user UUIDs.
 - **Admin Dashboard:** Build a master view for platform owners to monitor all shops, track total appointments, and manage users across the ecosystem.
 - **Payment Integration:** Implement a mock Stripe/Razorpay checkout flow for prepaying for haircuts or handling the ₹50 penalty fees.
